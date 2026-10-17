@@ -416,6 +416,23 @@ export const useGame = create<GameState>((set, get) => ({
       const me = get().playerId;
 
       switch (msg.t) {
+        /* The relay's greeting: here's who was already in the room. */
+        case 'welcome': {
+          if (msg.members?.length) {
+            set((s) => {
+              const merged = [...s.peers];
+              msg.members.forEach((p) => {
+                if (p.id === me) return;
+                const i = merged.findIndex((x) => x.id === p.id);
+                if (i >= 0) merged[i] = { ...p, at: Date.now() };
+                else merged.push({ ...p, at: Date.now() });
+              });
+              return { peers: merged };
+            });
+          }
+          break;
+        }
+
         case 'hello': {
           const alreadyKnown = get().peers.some((p) => p.id === msg.from.id);
 

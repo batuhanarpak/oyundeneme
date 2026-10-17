@@ -63,19 +63,11 @@ export default class NeonBreachServer implements Party.Server {
     this.room.broadcast(raw, [sender.id]);
   }
 
-  onClose(conn: Party.Connection) {
-    /* Drop anyone whose connection died without a polite goodbye. */
-    for (const [id, m] of this.members) {
-      if (Date.now() - m.joinedAt > 0 && !this.isStillConnected(id)) {
-        this.members.delete(id);
-      }
-    }
-  }
-
-  private isStillConnected(_id: string) {
-    /* PartyKit keeps its own connection list; the entry is dropped lazily on
-       the next roster request rather than tracked precisely here. */
-    return true;
+  onClose(_conn: Party.Connection) {
+    /* Roster entries age out on their own: clients re-announce `hello` on a
+       heartbeat, so anyone who stops appearing drops off the list. Tracking a
+       precise connection→member index would add bookkeeping for no real gain
+       here. */
   }
 
   /** HTTP endpoint so the client can discover who else is in the room. */

@@ -7,6 +7,7 @@ import { AttackLayer } from '@/components/ui/AttackLayer';
 import { Hub } from '@/components/ui/Hub';
 import { JoinGate } from '@/components/ui/JoinGate';
 import { PongDuel } from '@/components/ui/PongDuel';
+import { NetStatus } from '@/components/ui/NetStatus';
 import { BreachMode } from '@/components/modes/BreachMode';
 import { ClashMode } from '@/components/modes/ClashMode';
 import { TowerMode } from '@/components/modes/TowerMode';
@@ -163,6 +164,7 @@ export default function Page() {
                   <span className="stat hidden text-[10px] text-[var(--text-lo)] md:block">
                     <span className="text-[var(--neon-green)]">◉</span> {peers.length + 1} operatör
                   </span>
+                  <NetStatus />
                   <span className="stat hidden text-[10px] text-[var(--text-lo)] lg:block">
                     {clock || '--:--:--'}
                   </span>

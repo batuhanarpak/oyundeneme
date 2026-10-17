@@ -71,12 +71,58 @@ export interface Peer {
 }
 
 const CHANNEL = 'neon-breach';
-
-/** PartyKit host, e.g. `neon-breach.username.partykit.dev`. Empty = local only. */
-const PARTY_HOST = (process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? '').trim();
-
-/** Which room to join. Shared by everyone playing together. */
 const ROOM = 'alpha';
+const HOST_KEY = 'nb:party-host';
+
+/**
+ * Where the relay lives, resolved once per page load.
+ *
+ * Order matters: a `?party=` query param wins, so a shared link works for
+ * someone who has never opened the game before — they click and they're in.
+ * We then remember it locally so a plain reload keeps working. `NEXT_PUBLIC_
+ * PARTYKIT_HOST` remains as a build-time default for deployments that set it.
+ */
+function resolveHost(): string {
+  if (typeof window === 'undefined') {
+    return (process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? '').trim();
+  }
+  try {
+    const fromUrl = new URL(window.location.href).searchParams.get('party');
+    if (fromUrl) {
+      localStorage.setItem(HOST_KEY, fromUrl);
+      return fromUrl.trim();
+    }
+    const saved = localStorage.getItem(HOST_KEY);
+    if (saved) return saved.trim();
+  } catch {
+    /* a blocked localStorage just means we fall through to the env default */
+  }
+  return (process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? '').trim();
+}
+
+let PARTY_HOST = resolveHost();
+
+/** Points the client at a relay and remembers it for next time. */
+export function setPartyHost(host: string) {
+  PARTY_HOST = host.trim();
+  try {
+    localStorage.setItem(HOST_KEY, PARTY_HOST);
+  } catch {
+    /* non-fatal: the session still works, it just won't be remembered */
+  }
+}
+
+export function getPartyHost() {
+  return PARTY_HOST;
+}
+
+/** A link that drops whoever opens it straight into the same room. */
+export function shareUrl() {
+  if (typeof window === 'undefined' || !PARTY_HOST) return '';
+  const u = new URL(window.location.href);
+  u.searchParams.set('party', PARTY_HOST);
+  return u.toString();
+}
 
 type Handler = (msg: NetMessage) => void;
 
@@ -87,6 +133,15 @@ class Net {
   private started = false;
   private retry = 0;
   private outbox: string[] = [];
+  /**
+   * Message ids we've already handled.
+   *
+   * Every message travels down two paths at once — the local BroadcastChannel
+   * and the WebSocket relay — so a tab on the same machine as the sender sees
+   * it twice. Deduping here keeps the game code from having to care.
+   */
+  private seen = new Set<string>();
+  private seenOrder: string[] = [];
 
   /** True when we're relaying through a real server rather than local tabs. */
   get online() {
@@ -179,26 +234,44 @@ class Net {
 
   private dispatch(msg: NetMessage) {
     if (!msg || typeof msg !== 'object' || typeof msg.t !== 'string') return;
+
+    /* Same message can arrive over both transports; handle it once. */
+    const id = (msg as { __id?: string }).__id;
+    if (id) {
+      if (this.seen.has(id)) return;
+      this.seen.add(id);
+      this.seenOrder.push(id);
+      /* Bounded so a long session can't grow the set without limit. */
+      if (this.seenOrder.length > 600) {
+        const drop = this.seenOrder.splice(0, 200);
+        drop.forEach((d) => this.seen.delete(d));
+      }
+    }
+
     this.handlers.forEach((h) => h(msg));
   }
 
   send(msg: NetMessage) {
     if (typeof window === 'undefined') return;
-    const raw = JSON.stringify(msg);
 
-    /* Local tabs always hear it (and the sender ignores its own echo). */
+    /* One id per logical message, shared by both transports. */
+    const __id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const stamped = { ...msg, __id };
+    const raw = JSON.stringify(stamped);
+
+    /* Local tabs. */
     if (this.channel) {
-      this.channel.postMessage(msg);
+      this.channel.postMessage(stamped);
     } else {
       try {
-        localStorage.setItem(CHANNEL, JSON.stringify({ ...msg, __nonce: Math.random() }));
+        localStorage.setItem(CHANNEL, raw);
         localStorage.removeItem(CHANNEL);
       } catch {
         /* storage may be unavailable in private mode */
       }
     }
 
-    /* And the world hears it, when a relay is configured. */
+    /* And the world, when a relay is configured. */
     if (this.online) {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.ws.send(raw);
