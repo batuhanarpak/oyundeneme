@@ -7,9 +7,9 @@ import { Panel, Btn, Meter, Chip } from '@/components/ui/Panel';
 import { CommsPanel } from '@/components/ui/CommsPanel';
 import { BREACH_STAGES, ROLES } from '@/config/game';
 import { sfx } from '@/lib/sfx';
-import {
-  IconGhost, IconEye, IconGrid, IconLock, IconUnlock, IconBolt, IconWave, IconShield,
-} from '@/components/ui/Icons';
+import { PORTRAITS } from '@/components/ui/Portraits';
+import { FacilityMap, SpectrumAnalyser, CircuitDiagram } from '@/components/ui/Schematics';
+import { IconLock, IconUnlock, IconWave, IconGrid, IconUsers, IconChevron } from '@/components/ui/Icons';
 
 /* ============================================================
    GHOST — the physical layer. Sees the room, not the data.
@@ -29,9 +29,6 @@ const GhostView: React.FC<{ stage: number; onSolve: () => void; solved: boolean 
     setWrong(false);
   }, [stage]);
 
-  // Corridor grid — a small maze the ghost reads.
-  const cells = useMemo(() => Array.from({ length: 48 }, (_, i) => i), []);
-
   const choose = (i: number) => {
     setPick(i);
     if (i === s.ghost.correct) {
@@ -47,30 +44,11 @@ const GhostView: React.FC<{ stage: number; onSolve: () => void; solved: boolean 
   return (
     <div className="space-y-4">
       <Panel title="FİZİKSEL KATMAN" subtitle="Tesis yerleşimi — canlı" accent="var(--neon-amber)">
-        <div className="grid-bg inset-well relative grid grid-cols-8 gap-1 p-3">
-          {cells.map((c) => {
-            const isWall = c % 7 === 3 || c % 11 === 5;
-            const isPlayer = c === 20 + stage * 3;
-            const isTarget = c === 34;
-            return (
-              <div
-                key={c}
-                className="aspect-square rounded-[3px] transition-colors"
-                style={{
-                  background: isPlayer
-                    ? 'var(--neon-amber)'
-                    : isTarget
-                      ? 'rgba(74,222,128,0.55)'
-                      : isWall
-                        ? 'rgba(148,197,255,0.16)'
-                        : 'rgba(255,255,255,0.03)',
-                  boxShadow: isPlayer ? '0 0 12px var(--neon-amber)' : 'none',
-                }}
-              />
-            );
-          })}
-          <div className="pointer-events-none absolute inset-0 rounded-[10px] border border-[var(--neon-amber)]/20" />
-        </div>
+        <FacilityMap
+          playerCell={20 + stage * 3}
+          targetCell={34}
+          accent="var(--neon-amber)"
+        />
         <div className="mt-3 flex flex-wrap gap-2">
           <Chip color="var(--neon-amber)">SEN</Chip>
           <Chip color="var(--neon-green)">HEDEF</Chip>
@@ -143,33 +121,16 @@ const OracleView: React.FC<{ stage: number; onSolve: () => void; solved: boolean
     }
   };
 
-  // Live waveform so the panel feels like it's reading something real.
   const [phase, setPhase] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setPhase((p) => p + 0.35), 60);
     return () => clearInterval(id);
   }, []);
 
-  const wave = useMemo(
-    () => Array.from({ length: 64 }, (_, i) => 50 + Math.sin(i * 0.4 + phase) * 34 * Math.sin(i * 0.09)),
-    [phase]
-  );
-
   return (
     <div className="space-y-4">
       <Panel title="SİNYAL ANALİZİ" subtitle="Taşıyıcı dalga formu" accent="var(--neon-violet)">
-        <div className="inset-well flex h-24 items-end gap-[2px] p-3">
-          {wave.map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-sm"
-              style={{
-                height: `${Math.abs(h)}%`,
-                background: i % 8 === 0 ? 'var(--neon-violet)' : 'rgba(167,139,250,0.35)',
-              }}
-            />
-          ))}
-        </div>
+        <SpectrumAnalyser phase={phase} accent="var(--neon-violet)" />
       </Panel>
 
       <Panel
@@ -246,14 +207,26 @@ const ArchitectView: React.FC<{ stage: number; onSolve: () => void; solved: bool
   return (
     <div className="space-y-4">
       <Panel title="ENERJİ ŞEBEKESİ" subtitle="Hat yükü izleme" accent="var(--neon-green)">
-        <Meter
-          value={load}
-          max={8}
-          color={over ? 'var(--neon-rose)' : 'var(--neon-green)'}
-          height={10}
-          label="TOPLAM YÜK"
-        />
-        <div className="mt-4 grid grid-cols-5 gap-2">
+        <CircuitDiagram open={open} solution={s.architect.solution} accent="var(--neon-green)" />
+        <div className="mt-4">
+          <Meter
+            value={load}
+            max={8}
+            color={over ? 'var(--neon-rose)' : 'var(--neon-green)'}
+            height={10}
+            label="TOPLAM YÜK"
+          />
+        </div>
+      </Panel>
+
+      <Panel
+        title="GÜVENLİK DUVARI"
+        subtitle="Devre şeması"
+        accent="var(--neon-green)"
+        right={solved ? <Chip color="var(--neon-green)">AÇIK</Chip> : <Chip color="var(--neon-rose)">KİLİTLİ</Chip>}
+      >
+        <p className="mb-3 text-xs text-[var(--text-lo)]">{s.architect.prompt}</p>
+        <div className="mb-4 grid grid-cols-5 gap-2">
           {s.architect.grid.map((g, i) => {
             const on = open.includes(i);
             return (
@@ -268,7 +241,10 @@ const ArchitectView: React.FC<{ stage: number; onSolve: () => void; solved: bool
                   boxShadow: on ? '0 0 16px rgba(74,222,128,0.3)' : 'none',
                 }}
               >
-                <p className="stat text-center text-lg font-black" style={{ color: on ? 'var(--neon-green)' : 'var(--text-lo)' }}>
+                <p
+                  className="stat text-center text-lg font-black"
+                  style={{ color: on ? 'var(--neon-green)' : 'var(--text-lo)' }}
+                >
                   {g}
                 </p>
                 <p className="mt-0.5 text-center text-[8px] uppercase tracking-widest text-[var(--text-lo)]">
@@ -278,16 +254,8 @@ const ArchitectView: React.FC<{ stage: number; onSolve: () => void; solved: bool
             );
           })}
         </div>
-      </Panel>
 
-      <Panel
-        title="GÜVENLİK DUVARI"
-        subtitle="Devre şeması"
-        accent="var(--neon-green)"
-        right={solved ? <Chip color="var(--neon-green)">AÇIK</Chip> : <Chip color="var(--neon-rose)">KİLİTLİ</Chip>}
-      >
-        <p className="mb-3 text-xs text-[var(--text-lo)]">{s.architect.prompt}</p>
-        <div className="flex items-center justify-center gap-4 py-4">
+        <div className="flex items-center justify-center gap-4 py-2">
           <div
             className="flex h-20 w-20 items-center justify-center rounded-xl border-2 transition-all"
             style={{
@@ -312,6 +280,80 @@ const ArchitectView: React.FC<{ stage: number; onSolve: () => void; solved: bool
 };
 
 /* ============================================================
+   Role picker — with portraits
+   ============================================================ */
+
+const RoleCards: React.FC<{
+  onPick: (r: Role) => void;
+  taken?: Role[];
+  exclude?: Role[];
+}> = ({ onPick, taken = [], exclude = [] }) => {
+  const [hover, setHover] = useState<string | null>(null);
+  const available = ROLES.filter((r) => !exclude.includes(r.id));
+
+  return (
+    <div className="stagger grid grid-cols-1 gap-4 md:grid-cols-3">
+      {available.map((r) => {
+        const Portrait = PORTRAITS[r.id as keyof typeof PORTRAITS];
+        const isTaken = taken.includes(r.id);
+        const on = hover === r.id;
+
+        return (
+          <button
+            key={r.id}
+            disabled={isTaken}
+            onMouseEnter={() => {
+              setHover(r.id);
+              sfx.hover();
+            }}
+            onMouseLeave={() => setHover(null)}
+            onClick={() => onPick(r.id)}
+            className="panel group relative overflow-hidden p-0 text-left transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40"
+            style={{
+              borderColor: on && !isTaken ? r.color : undefined,
+              boxShadow: on && !isTaken ? `0 0 36px ${r.color}33` : undefined,
+              transform: on && !isTaken ? 'translateY(-4px)' : undefined,
+            }}
+          >
+            {/* Portrait strip */}
+            <div className="relative">
+              <Portrait size={undefined} className="!h-40 !w-full !rounded-none !border-0" live={on} />
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#070b12] to-transparent" />
+              <span
+                className="absolute right-3 top-3 rounded px-2 py-0.5 text-[9px] font-black uppercase tracking-widest"
+                style={{ background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}55` }}
+              >
+                {isTaken ? 'DOLU' : r.codename}
+              </span>
+            </div>
+
+            <div className="p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.18em]" style={{ color: r.color }}>
+                {r.name}
+              </h3>
+              <p className="mt-2 text-[11px] leading-relaxed text-[var(--text-mid)]">{r.desc}</p>
+
+              <div className="mt-3 space-y-1 border-t border-[var(--line)] pt-3">
+                {r.canSee.map((c) => (
+                  <p key={c} className="flex items-center gap-2 text-[10px] text-[var(--text-mid)]">
+                    <span style={{ color: r.color }}>▸</span> {c}
+                  </p>
+                ))}
+                {r.cannotSee.map((c) => (
+                  <p key={c} className="flex items-center gap-2 text-[10px] text-[var(--text-lo)] line-through">
+                    <span>✕</span> {c}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+/* ============================================================
    Shell
    ============================================================ */
 
@@ -321,21 +363,42 @@ export const BreachMode: React.FC = () => {
   const setMode = useGame((s) => s.setMode);
   const postShared = useGame((s) => s.postShared);
   const shared = useGame((s) => s.shared);
+  const breachPlayers = useGame((s) => s.breachPlayers);
+  const autoRole = useGame((s) => s.autoRole);
+  const setBreachSetup = useGame((s) => s.setBreachSetup);
 
   const [stage, setStage] = useState(0);
+  const [configuring, setConfiguring] = useState(true);
 
   const stageKey = `breach:stage${stage}`;
   const oracleDone = Boolean(shared[`${stageKey}:oracle`]);
   const archDone = Boolean(shared[`${stageKey}:architect`]);
   const ghostDone = Boolean(shared[`${stageKey}:ghost`]);
 
-  /* The layer opens only when the layer that feeds it has finished. */
+  /* The Ghost is gated on the other two layers. In 2-player mode the
+     automated subsystem solves its own layer, so the gate still opens. */
   const gateOpen = oracleDone && archDone;
-
   const complete = (layer: 'oracle' | 'architect' | 'ghost') => postShared(`${stageKey}:${layer}`, true);
 
   const allDone = oracleDone && archDone && ghostDone;
   const [advanced, setAdvanced] = useState(false);
+
+  /* ---- automated subsystem (2-player mode) ----
+     Stands in for the missing third operator: waits a few seconds, then
+     reports its layer complete so the Ghost gate can still open. */
+  useEffect(() => {
+    if (breachPlayers !== 2 || configuring) return;
+    if (role === autoRole) return;
+
+    const key = `${stageKey}:${autoRole}`;
+    if (shared[key]) return;
+
+    const t = setTimeout(() => {
+      postShared(key, true);
+    }, 6000 + stage * 2000);
+
+    return () => clearTimeout(t);
+  }, [breachPlayers, autoRole, role, stageKey, shared, postShared, stage, configuring]);
 
   useEffect(() => {
     if (allDone && !advanced) {
@@ -351,57 +414,167 @@ export const BreachMode: React.FC = () => {
     if (!allDone) setAdvanced(false);
   }, [allDone, advanced, stage]);
 
-  if (!role || role === 'spectator') {
+  /* ---------------- setup ---------------- */
+  if (configuring) {
+    const humanRoles: Role[] =
+      breachPlayers === 3
+        ? (['ghost', 'oracle', 'architect'] as Role[])
+        : (['ghost', 'oracle', 'architect'] as Role[]).filter((r) => r !== autoRole);
+
     return (
-      <RoleSelect
-        onPick={(r) => {
-          setRole(r);
-          sfx.confirm();
-        }}
-        onBack={() => setMode('hub')}
-      />
+      <div className="mx-auto max-w-4xl space-y-7">
+        <div className="text-center">
+          <p className="label">the breach</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-white">EKİP KURULUMU</h1>
+          <p className="mx-auto mt-3 max-w-lg text-xs leading-relaxed text-[var(--text-mid)]">
+            Kaç operatör sahada olacak? Eksik kalan katmanı otomatik alt sistem üstlenir.
+          </p>
+        </div>
+
+        {/* Player count */}
+        <div className="grid grid-cols-2 gap-4">
+          {([3, 2] as const).map((n) => {
+            const on = breachPlayers === n;
+            return (
+              <button
+                key={n}
+                onClick={() => {
+                  /* Keep the same auto-role unless it would collide with the
+                     player's own role once the roster shrinks. */
+                  setBreachSetup(n, autoRole);
+                  sfx.click();
+                }}
+                className="panel flex items-center gap-4 p-5 text-left transition-all"
+                style={{
+                  borderColor: on ? 'var(--neon-cyan)' : undefined,
+                  boxShadow: on ? '0 0 30px rgba(34,211,238,0.25)' : undefined,
+                }}
+              >
+                <span
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-lg font-black"
+                  style={{
+                    borderColor: on ? 'var(--neon-cyan)' : 'var(--line-strong)',
+                    color: on ? 'var(--neon-cyan)' : 'var(--text-lo)',
+                    background: on ? 'rgba(34,211,238,0.12)' : 'transparent',
+                  }}
+                >
+                  {n}
+                </span>
+                <div>
+                  <p className="text-sm font-black uppercase tracking-wider text-white">
+                    {n} OPERATÖR
+                  </p>
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-[var(--text-mid)]">
+                    {n === 3
+                      ? 'Tüm katmanlar insan tarafından yönetilir. Tam koordinasyon gerekir.'
+                      : 'Bir katmanı alt sistem üstlenir. Daha hızlı ama daha az kontrollü.'}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Which role the subsystem covers */}
+        {breachPlayers === 2 && (
+          <div className="anim-rise">
+            <p className="label mb-3">otomatik alt sistem hangi katmanı üstlensin?</p>
+            <div className="grid grid-cols-3 gap-3">
+              {ROLES.map((r) => {
+                const on = autoRole === r.id;
+                const Portrait = PORTRAITS[r.id as keyof typeof PORTRAITS];
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => {
+                      setBreachSetup(2, r.id);
+                      if (role === r.id) setRole('spectator');
+                      sfx.click();
+                    }}
+                    className="panel overflow-hidden p-0 transition-all"
+                    style={{
+                      borderColor: on ? r.color : undefined,
+                      boxShadow: on ? `0 0 26px ${r.color}33` : undefined,
+                    }}
+                  >
+                    <Portrait size={undefined} className="!h-20 !w-full !rounded-none !border-0" live={false} />
+                    <p
+                      className="px-3 py-2 text-center text-[10px] font-black uppercase tracking-widest"
+                      style={{ color: r.color }}
+                    >
+                      {r.name}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-center text-[10px] text-[var(--text-lo)]">
+              Alt sistem seçilen katmanı birkaç saniye içinde kendi çözer.
+            </p>
+          </div>
+        )}
+
+        {/* Role pick */}
+        <div>
+          <p className="label mb-3">hangi katmanı sen yöneteceksin?</p>
+          <RoleCards
+            onPick={(r) => {
+              setRole(r);
+              setConfiguring(false);
+              sfx.confirm();
+            }}
+            exclude={breachPlayers === 2 ? [autoRole] : []}
+          />
+        </div>
+
+        <div className="flex justify-center gap-2">
+          <Btn tone="ghost" onClick={() => setMode('hub')}>
+            ← merkez
+          </Btn>
+        </div>
+      </div>
     );
   }
 
+  /* ---------------- mission ---------------- */
   return (
     <div className="space-y-5">
-      {/* Mission header */}
       <Panel
         accent="var(--neon-cyan)"
         title="OPERASYON: BREACH"
-        subtitle={`Aşama ${stage + 1} / ${BREACH_STAGES.length}`}
+        subtitle={`Aşama ${stage + 1} / ${BREACH_STAGES.length} · ${breachPlayers} operatör`}
         right={
           <button
             onClick={() => {
               setRole('spectator');
+              setConfiguring(true);
               sfx.click();
             }}
             className="text-[9px] uppercase tracking-widest text-[var(--text-lo)] hover:text-white"
           >
-            rol değiştir
+            kurulumu değiştir
           </button>
         }
         bodyClass="p-4"
       >
         <div className="flex flex-wrap items-center gap-3">
           <Meter value={stage + (allDone ? 1 : 0)} max={BREACH_STAGES.length} label="İLERLEME" height={5} />
-          <div className="flex gap-2">
-            <Chip color={oracleDone ? 'var(--neon-green)' : 'var(--neon-violet)'}>
-              ORACLE {oracleDone ? '✓' : '…'}
-            </Chip>
-            <Chip color={archDone ? 'var(--neon-green)' : 'var(--neon-green)'}>
-              ARCHITECT {archDone ? '✓' : '…'}
-            </Chip>
-            <Chip color={ghostDone ? 'var(--neon-green)' : 'var(--neon-amber)'}>
-              GHOST {ghostDone ? '✓' : '…'}
-            </Chip>
+          <div className="flex flex-wrap gap-2">
+            {ROLES.map((r) => {
+              const done = r.id === 'oracle' ? oracleDone : r.id === 'architect' ? archDone : ghostDone;
+              const automated = breachPlayers === 2 && autoRole === r.id;
+              return (
+                <Chip key={r.id} color={done ? 'var(--neon-green)' : r.color}>
+                  {r.name.replace('THE ', '')} {done ? '✓' : automated ? '⟳ OTO' : '…'}
+                </Chip>
+              );
+            })}
           </div>
         </div>
       </Panel>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          {/* Gating: the Ghost can't act until the other two have fed it intel. */}
           {role === 'ghost' && !gateOpen && (
             <Panel title="BAĞLANTI BEKLENİYOR" accent="var(--neon-amber)" bodyClass="p-8">
               <div className="flex flex-col items-center gap-4 text-center">
@@ -439,10 +612,30 @@ export const BreachMode: React.FC = () => {
             <ArchitectView stage={stage} onSolve={() => complete('architect')} solved={archDone} />
           )}
 
+          {role === 'spectator' && (
+            <Panel title="GÖZLEMCİ" accent="var(--neon-cyan)" bodyClass="p-8">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <IconUsers size={38} className="text-[var(--neon-cyan)]" />
+                <p className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--neon-cyan)]">
+                  katman seçilmedi
+                </p>
+                <Btn
+                  tone="cyan"
+                  onClick={() => {
+                    setConfiguring(true);
+                    sfx.click();
+                  }}
+                >
+                  katman seç <IconChevron size={12} />
+                </Btn>
+              </div>
+            </Panel>
+          )}
+
           {allDone && (
             <Panel accent="var(--neon-green)" bodyClass="p-6">
               <div className="anim-rise text-center">
-                <IconShield size={36} className="mx-auto mb-2 text-[var(--neon-green)]" />
+                <IconGrid size={36} className="mx-auto mb-2 text-[var(--neon-green)]" />
                 <p className="text-sm font-black uppercase tracking-[0.24em] text-[var(--neon-green)]">
                   katman aşıldı
                 </p>
@@ -463,112 +656,24 @@ export const BreachMode: React.FC = () => {
 
           <Panel title="ROL BİLGİSİ" accent="var(--neon-cyan)" bodyClass="p-4">
             {(() => {
-              const r = {
-                ghost: { n: 'THE GHOST', c: 'var(--neon-amber)', i: IconGhost, d: 'Odada ne olduğunu görürsün. Veriyi göremezsin.' },
-                oracle: { n: 'THE ORACLE', c: 'var(--neon-violet)', i: IconEye, d: 'Şifreyi görürsün. Odayı göremezsin.' },
-                architect: { n: 'THE ARCHITECT', c: 'var(--neon-green)', i: IconGrid, d: 'Devreleri görürsün. Şifreyi göremezsin.' },
-              }[role as 'ghost' | 'oracle' | 'architect'];
+              const r = ROLES.find((x) => x.id === role);
               if (!r) return null;
-              const Icon = r.i;
+              const Portrait = PORTRAITS[role as keyof typeof PORTRAITS];
+              if (!Portrait) return null;
               return (
-                <div className="flex gap-3">
-                  <Icon size={28} className="shrink-0" />
+                <div className="space-y-3">
+                  <Portrait size={undefined} className="!h-32 !w-full" live={false} />
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: r.c }}>
-                      {r.n}
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: r.color }}>
+                      {r.name}
                     </p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-mid)]">{r.d}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-mid)]">{r.desc}</p>
                   </div>
                 </div>
               );
             })()}
           </Panel>
         </div>
-      </div>
-    </div>
-  );
-};
-
-/* ============================================================
-   Role select
-   ============================================================ */
-
-const ICONS = { ghost: IconGhost, oracle: IconEye, architect: IconGrid } as const;
-
-export const RoleSelect: React.FC<{ onPick: (r: Role) => void; onBack: () => void }> = ({
-  onPick,
-  onBack,
-}) => {
-  const [hover, setHover] = useState<string | null>(null);
-
-  return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="text-center">
-        <p className="label">kimlik seçimi</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight text-white">OPERATÖRÜNÜ SEÇ</h1>
-        <p className="mx-auto mt-3 max-w-lg text-xs leading-relaxed text-[var(--text-mid)]">
-          Her operatör sistemin yalnızca bir katmanını görür. Hiçbiri tek başına yeterli değildir —
-          ancak iletişim kurarsanız içeri girebilirsiniz.
-        </p>
-      </div>
-
-      <div className="stagger grid grid-cols-1 gap-4 md:grid-cols-3">
-        {ROLES.map((r) => {
-          const Icon = ICONS[r.id as keyof typeof ICONS];
-          const on = hover === r.id;
-          return (
-            <button
-              key={r.id}
-              onMouseEnter={() => setHover(r.id)}
-              onMouseLeave={() => setHover(null)}
-              onClick={() => onPick(r.id)}
-              className="panel group relative p-5 text-left transition-all duration-300"
-              style={{
-                borderColor: on ? r.color : undefined,
-                boxShadow: on ? `0 0 36px ${r.color}33` : undefined,
-                transform: on ? 'translateY(-4px)' : undefined,
-              }}
-            >
-              <div
-                className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border transition-all"
-                style={{
-                  borderColor: `${r.color}55`,
-                  background: `${r.color}12`,
-                  color: r.color,
-                }}
-              >
-                <Icon size={26} />
-              </div>
-
-              <h3 className="text-sm font-black uppercase tracking-[0.18em]" style={{ color: r.color }}>
-                {r.name}
-              </h3>
-              <p className="mt-0.5 text-[9px] uppercase tracking-[0.2em] text-[var(--text-lo)]">
-                {r.codename}
-              </p>
-              <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-mid)]">{r.desc}</p>
-
-              <div className="mt-4 space-y-1.5 border-t border-[var(--line)] pt-3">
-                {r.canSee.map((c) => (
-                  <p key={c} className="flex items-center gap-2 text-[10px] text-[var(--text-mid)]">
-                    <span style={{ color: r.color }}>▸</span> {c}
-                  </p>
-                ))}
-                {r.cannotSee.map((c) => (
-                  <p key={c} className="flex items-center gap-2 text-[10px] text-[var(--text-lo)] line-through">
-                    <span>✕</span> {c}
-                  </p>
-                ))}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex justify-center">
-        <Btn tone="ghost" onClick={onBack}>
-          ← merkeze dön
-        </Btn>
       </div>
     </div>
   );

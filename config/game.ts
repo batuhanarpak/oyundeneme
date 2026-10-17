@@ -5,7 +5,7 @@ import type { Role } from '@/store/useGameStore';
    ============================================================ */
 
 export interface ModeDef {
-  id: 'breach' | 'clash' | 'tower';
+  id: 'breach' | 'clash' | 'tower' | 'space';
   name: string;
   tag: string;
   blurb: string;
@@ -22,7 +22,7 @@ export const MODES: ModeDef[] = [
     blurb:
       'Üç operatör, tek bir sunucuyu içeriden çökertir. Kimse tek başına göremez — sistemin tamamı ancak üç bakış açısı birleşince anlaşılır.',
     accent: 'var(--neon-cyan)',
-    players: '3 OYUNCU',
+    players: '2-3 OYUNCU',
     duration: '15-25 DK',
   },
   {
@@ -40,10 +40,20 @@ export const MODES: ModeDef[] = [
     name: 'TOWER TYPING',
     tag: 'KLAVYE SAVAŞI',
     blurb:
-      'Gökten kelimeler yağar. Her doğru kelime bir asker doğurur ve rakip kuleye yürür. Kulesi ayakta kalan son operatör kazanır.',
+      'Gökten kelimeler yağar. Doğru yazdığın kelime garnizonuna birlik ekler; sürükleyip karakol kurar, düşman kulesine yürürsün.',
     accent: 'var(--neon-amber)',
     players: '2-3 OYUNCU',
     duration: '8-12 DK',
+  },
+  {
+    id: 'space',
+    name: 'VOID LANCE',
+    tag: 'UZAY SAVAŞI',
+    blurb:
+      'Beş gemi sınıfı, otuz yetenek, üç fazlı bir kovan kraliçesi. Pilotlar birleşip tek bir dev gemi olabilir — ya da ayrı ayrı avlanır.',
+    accent: 'var(--neon-violet)',
+    players: '1-5 PİLOT',
+    duration: '10-20 DK',
   },
 ];
 
@@ -89,45 +99,6 @@ export const ROLES: RoleDef[] = [
     canSee: ['Enerji hatları', 'Güvenlik duvarları', 'Devre şeması'],
     cannotSee: ['Şifreli veri', 'Oda yerleşimi'],
   },
-];
-
-/* ============================================================
-   Cerebral Clash — question bank
-   ============================================================ */
-
-export interface Question {
-  q: string;
-  a: string[];
-  correct: number;
-}
-
-export const QUESTIONS: Question[] = [
-  { q: 'TCP hangi katmanda çalışır?', a: ['Uygulama', 'Taşıma', 'Ağ', 'Veri Bağı'], correct: 1 },
-  { q: 'Bir IPv4 adresi kaç bittir?', a: ['16', '32', '64', '128'], correct: 1 },
-  { q: 'HTTP durum kodu 404 ne anlama gelir?', a: ['Sunucu hatası', 'Bulunamadı', 'Yetkisiz', 'Yönlendirme'], correct: 1 },
-  { q: 'AES varsayılan olarak hangi şifreleme türüdür?', a: ['Asimetrik', 'Simetrik', 'Hash', 'Kuantum'], correct: 1 },
-  { q: 'SHA-256 kaç bitlik özet üretir?', a: ['128', '192', '256', '512'], correct: 2 },
-  { q: 'DNS neyi çözer?', a: ['Şifreleri', 'Alan adlarını IP adresine', 'Paketleri', 'Sertifikaları'], correct: 1 },
-  { q: 'Hangi port HTTPS için varsayılandır?', a: ['80', '443', '22', '8080'], correct: 1 },
-  { q: 'RSA hangi matematiksel probleme dayanır?', a: ['Logaritma', 'Asal çarpanlara ayırma', 'Matris', 'Graf'], correct: 1 },
-  { q: 'SQL Injection nasıl önlenir?', a: ['Daha uzun şifre', 'Parametreli sorgu', 'Daha çok CPU', 'Yedekleme'], correct: 1 },
-  { q: 'JWT içindeki üçüncü bölüm nedir?', a: ['Header', 'Payload', 'Signature', 'Salt'], correct: 2 },
-  { q: 'Hangi algoritma asimetriktir?', a: ['AES', 'ChaCha20', 'ECDSA', 'Blowfish'], correct: 2 },
-  { q: 'Bir /24 ağında kaç kullanılabilir host vardır?', a: ['254', '256', '255', '512'], correct: 0 },
-  { q: 'MITM saldırısında saldırgan ne yapar?', a: ['Disk doldurur', 'Ortada dinler', 'Sadece DDoS', 'Fiziksel çalar'], correct: 1 },
-  { q: 'TLS el sıkışmasında ilk adım nedir?', a: ['ClientHello', 'ServerHello', 'FIN', 'SYN-ACK'], correct: 0 },
-  { q: 'RAM nedir?', a: ['Kalıcı depolama', 'Geçici bellek', 'İşlemci', 'Veri yolu'], correct: 1 },
-  { q: 'XSS hangi dilde çalışır?', a: ['SQL', 'JavaScript', 'Python', 'C'], correct: 1 },
-  { q: 'Kaç bit 1 bayt eder?', a: ['4', '8', '16', '32'], correct: 1 },
-  { q: 'Linux’ta dosya izni 755 neyi ifade eder?', a: ['Herkes yazar', 'Sahip tam, diğerleri oku/çalıştır', 'Sadece okuma', 'Sadece root'], correct: 1 },
-  { q: 'Honeypot nedir?', a: ['Antivirüs', 'Tuzak sistem', 'VPN', 'Firewall kuralı'], correct: 1 },
-  { q: 'Git’te yeni dal oluşturma komutu?', a: ['git new', 'git branch', 'git fork', 'git clone'], correct: 1 },
-  { q: 'Hangi hash algoritması kırılmış sayılır?', a: ['SHA-3', 'Bcrypt', 'MD5', 'Argon2'], correct: 2 },
-  { q: 'Docker imajı katmanlardan oluşur, en üstte ne var?', a: ['Base', 'Writable layer', 'Kernel', 'Registry'], correct: 1 },
-  { q: 'Zero-day nedir?', a: ['Yamalanmış açık', 'Bilinmeyen açık', 'Sıfır gecikme', 'Günlük yedek'], correct: 1 },
-  { q: 'Asimetrik şifrelemede açık anahtar ne yapar?', a: ['Çözer', 'Şifreler', 'Hash üretir', 'İmzalar'], correct: 1 },
-  { q: 'Bir rainbow table neyi kırar?', a: ['AES', 'Hash', 'TLS', 'SSH'], correct: 1 },
-  { q: 'CX3 hangi alanın terimidir?', a: ['Donanım', 'Yok — uydurma', 'Ağ', 'Bulut'], correct: 1 },
 ];
 
 /* ============================================================

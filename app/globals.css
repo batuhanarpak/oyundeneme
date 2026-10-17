@@ -293,6 +293,15 @@ body {
   animation: nb-drift 6s linear infinite;
 }
 
+@keyframes nb-portrait-scan {
+  0% {
+    top: -12%;
+  }
+  100% {
+    top: 108%;
+  }
+}
+
 /* Stagger helper — apply to children of a list. */
 .stagger > * {
   animation: nb-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;

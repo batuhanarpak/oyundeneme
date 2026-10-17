@@ -59,11 +59,22 @@ export const CommsPanel: React.FC<{ compact?: boolean }> = ({ compact = false })
           </p>
         )}
         {chat.map((line) => (
-          <div key={line.id} className="anim-slide">
+          <div
+            key={line.id}
+            className={`anim-slide rounded-lg px-2.5 py-1.5 ${
+              line.self ? 'border-l-2 bg-white/[0.045]' : ''
+            }`}
+            style={line.self ? { borderLeftColor: line.color } : undefined}
+          >
             <div className="flex items-baseline gap-2">
               <span className="text-[10px] font-black tracking-wider" style={{ color: line.color }}>
                 {line.name}
               </span>
+              {line.self && (
+                <span className="text-[8px] font-bold uppercase tracking-widest text-[var(--text-lo)]">
+                  sen
+                </span>
+              )}
               <span className="stat text-[9px] text-[var(--text-lo)]">
                 {new Date(line.at).toLocaleTimeString('tr-TR', {
                   hour: '2-digit',
