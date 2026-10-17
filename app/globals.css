@@ -1,0 +1,358 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   NEON BREACH — Design tokens
+   ============================================================ */
+:root {
+  --bg-void: #04060c;
+  --bg-deep: #080d18;
+  --bg-panel: rgba(12, 20, 34, 0.72);
+
+  --neon-cyan: #22d3ee;
+  --neon-violet: #a78bfa;
+  --neon-rose: #f43f5e;
+  --neon-amber: #fbbf24;
+  --neon-green: #4ade80;
+  --neon-blue: #3b82f6;
+
+  --line: rgba(148, 197, 255, 0.14);
+  --line-strong: rgba(148, 197, 255, 0.28);
+
+  --text-hi: #e8f4ff;
+  --text-mid: #9fb6d4;
+  --text-lo: #5b7392;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: var(--bg-void);
+  color: var(--text-hi);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--neon-cyan);
+  color: #04060c;
+}
+
+/* Slim tactical scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.3);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.5);
+}
+
+/* ============================================================
+   Surfaces
+   ============================================================ */
+@layer components {
+  .panel {
+    position: relative;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  /* Hairline sheen along the top edge — reads as glass, not as a box. */
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.35),
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  .panel-flat {
+    background: rgba(8, 13, 24, 0.86);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .inset-well {
+    background: rgba(2, 5, 12, 0.75);
+    border: 1px solid rgba(148, 197, 255, 0.1);
+    border-radius: 10px;
+    box-shadow: inset 0 1px 16px rgba(0, 0, 0, 0.6);
+  }
+
+  /* ============================================================
+     Type
+     ============================================================ */
+  .label {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-lo);
+    font-weight: 600;
+  }
+
+  .stat {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+}
+
+/* ============================================================
+   Effects
+   ============================================================ */
+
+/* CRT scanlines — one fixed overlay over the whole app. */
+.scanlines::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.22) 3px,
+    rgba(0, 0, 0, 0.22) 4px
+  );
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+/* Vignette to pull focus to the centre of the command deck. */
+.vignette::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+.glow-cyan {
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.28), 0 0 64px rgba(34, 211, 238, 0.1);
+}
+.glow-rose {
+  box-shadow: 0 0 24px rgba(244, 63, 94, 0.3), 0 0 64px rgba(244, 63, 94, 0.12);
+}
+.glow-green {
+  box-shadow: 0 0 24px rgba(74, 222, 128, 0.28), 0 0 64px rgba(74, 222, 128, 0.1);
+}
+.glow-violet {
+  box-shadow: 0 0 24px rgba(167, 139, 250, 0.3), 0 0 64px rgba(167, 139, 250, 0.12);
+}
+
+.text-glow {
+  text-shadow: 0 0 12px currentColor, 0 0 32px currentColor;
+}
+
+/* Faint grid, drawn with gradients so it costs nothing. */
+.grid-bg {
+  background-image: linear-gradient(rgba(34, 211, 238, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.055) 1px, transparent 1px);
+  background-size: 46px 46px;
+}
+
+/* ============================================================
+   Motion — hand-rolled, no animation library
+   ============================================================ */
+@keyframes nb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes nb-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes nb-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes nb-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes nb-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(1000%);
+  }
+}
+@keyframes nb-shake {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    transform: translate(-7px, 3px) rotate(-0.7deg);
+  }
+  40% {
+    transform: translate(6px, -4px) rotate(0.6deg);
+  }
+  60% {
+    transform: translate(-4px, 5px) rotate(-0.4deg);
+  }
+  80% {
+    transform: translate(5px, 2px) rotate(0.5deg);
+  }
+}
+@keyframes nb-flip {
+  from {
+    transform: rotate(180deg);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+@keyframes nb-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 46px 46px;
+  }
+}
+@keyframes nb-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.anim-rise {
+  animation: nb-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-fade {
+  animation: nb-fade 0.5s ease both;
+}
+.anim-slide {
+  animation: nb-slide-right 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-pulse {
+  animation: nb-pulse 1.9s ease-in-out infinite;
+}
+.anim-shake {
+  animation: nb-shake 0.42s ease-in-out;
+}
+.grid-drift {
+  animation: nb-drift 6s linear infinite;
+}
+
+/* Stagger helper — apply to children of a list. */
+.stagger > * {
+  animation: nb-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.13s; }
+.stagger > *:nth-child(4) { animation-delay: 0.18s; }
+.stagger > *:nth-child(5) { animation-delay: 0.23s; }
+.stagger > *:nth-child(6) { animation-delay: 0.28s; }
+.stagger > *:nth-child(7) { animation-delay: 0.33s; }
+.stagger > *:nth-child(8) { animation-delay: 0.38s; }
+
+/* ============================================================
+   Hostile-attack overlay states
+   ============================================================ */
+.fx-glitch {
+  animation: nb-shake 0.4s ease-in-out 3;
+}
+.fx-glitch::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background: linear-gradient(
+    90deg,
+    rgba(244, 63, 94, 0.16),
+    rgba(34, 211, 238, 0.16),
+    rgba(167, 139, 250, 0.16)
+  );
+  mix-blend-mode: screen;
+}
+.fx-blur {
+  filter: blur(7px) saturate(180%);
+  transition: filter 0.3s ease;
+}
+.fx-flip {
+  transform: rotate(180deg);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fx-freeze {
+  filter: grayscale(1) contrast(1.6) brightness(1.15);
+}
+.fx-burst::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background: radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.3), transparent 62%);
+  animation: nb-fade 0.5s ease reverse both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

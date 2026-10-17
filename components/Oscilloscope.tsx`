@@ -1,0 +1,49 @@
+import React, { useEffect, useRef } from 'react';
+
+export const Oscilloscope: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let offset = 0;
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#22c55e';
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#22c55e';
+
+      for (let x = 0; x < canvas.width; x++) {
+        // Create a complex wave pattern
+        const y = canvas.height / 2 +
+                  Math.sin(x * 0.02 + offset) * 30 +
+                  Math.sin(x * 0.05 + offset * 0.5) * 10;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.stroke();
+      offset += 0.1;
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
+
+  return (
+    <div className="relative w-full h-32 bg-black/50 border border-green-900 rounded-lg overflow-hidden">
+      <canvas ref={canvasRef} width={600} height={128} className="w-full h-full opacity-80" />
+      <div className="absolute top-2 left-2 text-[10px] text-green-500 font-mono animate-pulse">
+        LIVE_SIGNAL_FEED: ACTIVE
+      </div>
+    </div>
+  );
+};
