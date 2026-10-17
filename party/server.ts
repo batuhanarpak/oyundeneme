@@ -1,4 +1,5 @@
-import type * as Party from 'partykit/server';
+import { routePartykitRequest, Server } from 'partyserver';
+import type { Connection } from 'partyserver';
 
 /**
  * NEON BREACH relay.
@@ -8,6 +9,9 @@ import type * as Party from 'partykit/server';
  * members of the same room, and lets the clients keep their own authoritative
  * state. That means none of the game logic changes when the transport moves
  * from same-browser tabs to the internet.
+ *
+ * Runs on Cloudflare Workers + Durable Objects via PartyServer (the successor
+ * to the retired PartyKit hosted platform).
  */
 
 interface Member {
@@ -17,13 +21,15 @@ interface Member {
   joinedAt: number;
 }
 
-export default class NeonBreachServer implements Party.Server {
+interface Env {
+  Main: DurableObjectNamespace;
+}
+
+export class Main extends Server<Env> {
   members = new Map<string, Member>();
 
-  constructor(readonly room: Party.Room) {}
-
-  /** Reconnect a client and hand it the current roster. */
-  async onConnect(conn: Party.Connection) {
+  /** Greet a new connection with the current roster. */
+  async onConnect(conn: Connection) {
     conn.send(
       JSON.stringify({
         t: 'welcome',
@@ -32,7 +38,8 @@ export default class NeonBreachServer implements Party.Server {
     );
   }
 
-  onMessage(raw: string, sender: Party.Connection) {
+  /** PartyServer passes (connection, message) — the reverse of PartyKit. */
+  onMessage(sender: Connection, raw: string) {
     let msg: Record<string, unknown>;
     try {
       msg = JSON.parse(raw);
@@ -54,24 +61,22 @@ export default class NeonBreachServer implements Party.Server {
     }
 
     if (msg.t === 'bye') {
-      const id = msg.from as string;
-      this.members.delete(id);
+      this.members.delete(msg.from as string);
     }
 
     /* Relay to everyone else in the room. The sender already applied it
        locally, so echoing back would double-apply every event. */
-    this.room.broadcast(raw, [sender.id]);
+    this.broadcast(raw, [sender.id]);
   }
 
-  onClose(_conn: Party.Connection) {
-    /* Roster entries age out on their own: clients re-announce `hello` on a
-       heartbeat, so anyone who stops appearing drops off the list. Tracking a
-       precise connection→member index would add bookkeeping for no real gain
-       here. */
-  }
+  /**
+   * Roster entries age out on their own: clients re-announce `hello` on a
+   * heartbeat, so anyone who stops appearing drops off the list.
+   */
+  onClose(_conn: Connection) {}
 
-  /** HTTP endpoint so the client can discover who else is in the room. */
-  async onRequest(_req: Party.Request) {
+  /** HTTP endpoint so a client can discover who else is in the room. */
+  async onRequest(_req: Request) {
     return Response.json({
       members: Array.from(this.members.values()),
       count: this.members.size,
@@ -79,4 +84,11 @@ export default class NeonBreachServer implements Party.Server {
   }
 }
 
-NeonBreachServer satisfies Party.Worker;
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    return (
+      (await routePartykitRequest(request, env)) ??
+      new Response('Not found', { status: 404 })
+    );
+  },
+} satisfies ExportedHandler<Env>;
