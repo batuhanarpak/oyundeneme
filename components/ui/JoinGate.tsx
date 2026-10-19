@@ -6,6 +6,7 @@ import { PLAYER_COLORS } from '@/lib/net';
 import { Btn, Chip } from '@/components/ui/Panel';
 import { sfx } from '@/lib/sfx';
 import { IconUsers, IconSignature, IconTarget } from '@/components/ui/Icons';
+import { alpha } from '@/lib/color';
 
 /**
  * Entry screen. The player picks their own callsign and colour before
@@ -103,8 +104,8 @@ export const JoinGate: React.FC = () => {
                     className="h-9 flex-1 rounded-lg border transition-all"
                     style={{
                       borderColor: color === c ? c : 'var(--line-strong)',
-                      background: color === c ? `${c}2e` : 'rgba(255,255,255,0.02)',
-                      boxShadow: color === c ? `0 0 20px ${c}55` : 'none',
+                      background: color === c ? `${alpha(c, 0.18)}` : 'rgba(255,255,255,0.02)',
+                      boxShadow: color === c ? `0 0 20px ${alpha(c, 0.33)}` : 'none',
                     }}
                     aria-label={`renk ${c}`}
                   >
@@ -121,7 +122,7 @@ export const JoinGate: React.FC = () => {
             <div className="inset-well flex items-center gap-3 p-4">
               <span
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-xs font-black"
-                style={{ borderColor: color, color, background: `${color}14` }}
+                style={{ borderColor: color, color, background: `${alpha(color, 0.08)}` }}
               >
                 {(clean || '??').slice(0, 2).toUpperCase()}
               </span>

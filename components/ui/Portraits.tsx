@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useId } from 'react';
+import { alpha } from '@/lib/color';
 
 /**
  * Hand-drawn SVG artwork for the operator portraits.
@@ -25,47 +26,51 @@ const Frame: React.FC<{ children: React.ReactNode; color: string; live?: boolean
   live = true,
   size,
   className,
-}) => (
-  <div
-    className={`relative shrink-0 overflow-hidden rounded-xl border ${className ?? ''}`}
-    style={{
-      width: size,
-      height: size ? size * 1.166 : undefined,
-      borderColor: `${color}44`,
-      background: `radial-gradient(ellipse at 50% 18%, ${color}22, transparent 68%), #05080f`,
-    }}
-  >
-    <svg viewBox="0 0 120 140" className="h-full w-full">
-      {/* Backdrop grid */}
-      <defs>
-        <pattern id={`g-${color.replace(/[^a-z0-9]/gi, '')}`} width="12" height="12" patternUnits="userSpaceOnUse">
-          <path d="M12 0H0V12" fill="none" stroke={color} strokeOpacity="0.13" strokeWidth="0.6" />
-        </pattern>
-      </defs>
-      <rect width="120" height="140" fill={`url(#g-${color.replace(/[^a-z0-9]/gi, '')})`} />
-      {children}
-      {/* Bottom fade so the portrait seats into the card */}
-      <rect x="0" y="112" width="120" height="28" fill="url(#fade)" />
-      <defs>
-        <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#05080f" stopOpacity="0" />
-          <stop offset="1" stopColor="#05080f" stopOpacity="1" />
-        </linearGradient>
-      </defs>
-    </svg>
+}) => {
+  /* Unique per instance: the same portrait can render twice on one page
+     (role cards plus the sidebar), and duplicate SVG ids would make every
+     `url(#…)` resolve to whichever node the document parsed first. */
+  const key = useId().replace(/[^a-z0-9]/gi, '');
+  return (
+    <div
+      className={`relative shrink-0 overflow-hidden rounded-xl border ${className ?? ''}`}
+      style={{
+        width: size,
+        height: size ? size * 1.166 : undefined,
+        borderColor: `${alpha(color, 0.27)}`,
+        background: `radial-gradient(ellipse at 50% 18%, ${alpha(color, 0.13)}, transparent 68%), #05080f`,
+      }}
+    >
+      <svg viewBox="0 0 120 140" className="h-full w-full">
+        {/* Backdrop grid */}
+        <defs>
+          <pattern id={`g-${key}`} width="12" height="12" patternUnits="userSpaceOnUse">
+            <path d="M12 0H0V12" fill="none" stroke={color} strokeOpacity="0.13" strokeWidth="0.6" />
+          </pattern>
+          <linearGradient id={`fade-${key}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#05080f" stopOpacity="0" />
+            <stop offset="1" stopColor="#05080f" stopOpacity="1" />
+          </linearGradient>
+        </defs>
+        <rect width="120" height="140" fill={`url(#g-${key})`} />
+        {children}
+        {/* Bottom fade so the portrait seats into the card */}
+        <rect x="0" y="112" width="120" height="28" fill={`url(#fade-${key})`} />
+      </svg>
 
-    {live && (
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 h-8 opacity-40"
-        style={{
-          background: `linear-gradient(180deg, transparent, ${color}55, transparent)`,
-          animation: 'nb-portrait-scan 3.6s linear infinite',
-        }}
-      />
-    )}
-  </div>
-);
+      {live && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 h-8 opacity-40"
+          style={{
+            background: `linear-gradient(180deg, transparent, ${alpha(color, 0.33)}, transparent)`,
+            animation: 'nb-portrait-scan 3.6s linear infinite',
+          }}
+        />
+      )}
+    </div>
+  );
+};
 
 /* ------------------------------------------------------------------ */
 

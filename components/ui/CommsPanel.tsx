@@ -5,6 +5,7 @@ import { useGame } from '@/store/useGameStore';
 import { sfx } from '@/lib/sfx';
 import { IconSend, IconBolt, IconTarget } from './Icons';
 import type { AttackKind } from '@/lib/net';
+import { alpha } from '@/lib/color';
 
 const ATTACKS: { kind: AttackKind; label: string; hint: string }[] = [
   { kind: 'glitch', label: 'Glitch', hint: 'Ekranı titret' },
@@ -103,7 +104,7 @@ export const CommsPanel: React.FC<{ compact?: boolean }> = ({ compact = false })
                 key={p.id}
                 onClick={() => fire(p.id)}
                 className="rounded border px-2 py-1 text-[9px] font-bold uppercase tracking-wider transition-colors hover:bg-white/10"
-                style={{ borderColor: `${p.color}66`, color: p.color }}
+                style={{ borderColor: `${alpha(p.color, 0.4)}`, color: p.color }}
               >
                 {p.name}
               </button>

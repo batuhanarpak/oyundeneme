@@ -30,10 +30,10 @@ export type NetMessage =
   | { t: 'pong:accept'; from: string; name: string; host: string; }
   | { t: 'pong:state'; from: string; y: number; vx: number; vy: number; }
   | { t: 'pong:result'; from: string; winner: string; loser: string; }
-  | { t: 'space:join'; from: string; name: string; ship: string; color: string; ready: boolean; }
+  | { t: 'space:join'; from: string; name: string; drone: string; color: string; ready: boolean; }
   | { t: 'space:leave'; from: string; }
   | { t: 'space:launch'; from: string; at: number; host: string; }
-  | { t: 'space:ship'; from: string; name: string; color: string; ship: string; x: number; y: number; angle: number; hull: number; maxHull: number; }
+  | { t: 'space:drone'; from: string; name: string; color: string; drone: string; x: number; y: number; angle: number; chassis: number; maxChassis: number; }
   | { t: 'space:boss'; from: string; hp: number; x: number; y: number; dir: number; }
   | { t: 'space:bossHit'; from: string; dmg: number; }
   | { t: 'sync'; from: string; key: string; value: unknown; }
@@ -97,6 +97,7 @@ function resolveHost(): string {
   } catch {
     /* a blocked localStorage just means we fall through to the env default */
   }
+  // Priority: Environment variable (set in Vercel) -> fallback empty
   return (process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? '').trim();
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { alpha } from '@/lib/color';
 
 /**
  * Mode-specific artwork for The Breach.
@@ -201,7 +202,7 @@ export const CircuitDiagram: React.FC<{
               width="18"
               height="14"
               rx="2"
-              fill={isOpen ? `${accent}33` : '#0a1210'}
+              fill={isOpen ? `${alpha(accent, 0.2)}` : '#0a1210'}
               stroke={accent}
               strokeOpacity={isOpen ? 1 : 0.35}
               strokeWidth="1.3"

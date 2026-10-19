@@ -7,7 +7,9 @@ import { CommsPanel } from '@/components/ui/CommsPanel';
 import { CATEGORIES, QUESTIONS_BY_CATEGORY, type Question } from '@/config/questions';
 import { sfx } from '@/lib/sfx';
 import type { QuestionCategory } from '@/config/questions';
-import { IconBrain, IconBolt, IconSkull, IconChevron } from '@/components/ui/Icons';
+import { IconBrain, IconBolt, IconChevron } from '@/components/ui/Icons';
+import { TerminalScreen } from '@/components/ui/TerminalScreen';
+import { alpha } from '@/lib/color';
 
 const MAX_HP = 100;
 const TIME_PER_Q = 16;
@@ -218,7 +220,7 @@ export const ClashMode: React.FC = () => {
                 style={{ borderColor: undefined }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = c.accent;
-                  e.currentTarget.style.boxShadow = `0 0 34px ${c.accent}33`;
+                  e.currentTarget.style.boxShadow = `0 0 34px ${alpha(c.accent, 0.2)}`;
                   sfx.hover();
                 }}
                 onMouseLeave={(e) => {
@@ -290,47 +292,26 @@ export const ClashMode: React.FC = () => {
   /* ---------------- game over ---------------- */
   if (phase === 'over') {
     return (
-      <div className="mx-auto max-w-lg">
-        <Panel accent="var(--neon-rose)" bodyClass="p-8">
-          <div className="anim-rise text-center">
-            <IconSkull size={48} className="mx-auto mb-4 text-[var(--neon-rose)]" />
-            <h2 className="text-3xl font-black uppercase tracking-tight text-[var(--neon-rose)]">
-              kalkan çöktü
-            </h2>
-            <p className="mt-3 text-sm text-[var(--text-mid)]">
-              Toplam skor: <span className="font-black text-white">{score}</span>
-            </p>
-
-            <div className="mt-6 space-y-2">
-              {fighters.map((f, i) => (
-                <div
-                  key={f.id}
-                  className="flex items-center justify-between rounded-lg border border-[var(--line)] px-4 py-2"
-                  style={{ borderColor: f.id === playerId ? `${f.color}66` : undefined }}
-                >
-                  <span className="flex items-center gap-2 text-xs font-bold" style={{ color: f.color }}>
-                    <span className="stat text-[var(--text-lo)]">#{i + 1}</span>
-                    {f.name} {f.id === playerId && <span className="text-[9px]">(SEN)</span>}
-                  </span>
-                  <span className="stat text-sm font-black text-white">{f.score}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 flex justify-center gap-2">
-              <Btn tone="rose" onClick={reset}>
-                yeniden
-              </Btn>
-              <Btn tone="ghost" onClick={() => setPicked(false)}>
-                kategori
-              </Btn>
-              <Btn tone="ghost" onClick={() => setMode('hub')}>
-                merkez
-              </Btn>
-            </div>
-          </div>
-        </Panel>
-      </div>
+      <TerminalScreen
+        title="kalkan çöktü"
+        subtitle={`${cat?.name ?? 'Serbest'} kategorisinde savunma hattın aşıldı.`}
+        outcome="loss"
+        stats={[
+          { label: 'skor', value: score },
+          { label: 'soru', value: qi + 1 },
+          { label: 'en iyi seri', value: streak, color: 'var(--neon-amber)' },
+        ]}
+        ranking={fighters.map((f) => ({
+          id: f.id,
+          name: f.name,
+          score: f.score,
+          color: f.color,
+          you: f.id === playerId,
+        }))}
+        onRetry={reset}
+        retryLabel="yeniden"
+        onExit={() => setMode('hub')}
+      />
     );
   }
 
@@ -495,27 +476,29 @@ export const ClashMode: React.FC = () => {
               )}
               {opponents.map((o) => (
                 <div key={o.id} className="flex items-center gap-2">
-                  <span className="flex-1 truncate text-[10px] font-bold" style={{ color: o.color }}>
+                  <span className="min-w-0 flex-1 truncate text-[10px] font-bold" style={{ color: o.color }}>
                     {o.name}
                   </span>
-                  <button
+                  <Btn
+                    size="sm"
+                    tone="rose"
                     onClick={() => {
                       sendAttack('blur', o.id);
                       sfx.attack();
                     }}
-                    className="rounded border border-[var(--neon-rose)]/40 px-2 py-1 text-[9px] font-bold uppercase text-[var(--neon-rose)] hover:bg-[var(--neon-rose)]/12"
                   >
                     bulanık
-                  </button>
-                  <button
+                  </Btn>
+                  <Btn
+                    size="sm"
+                    tone="rose"
                     onClick={() => {
                       sendAttack('flip', o.id);
                       sfx.attack();
                     }}
-                    className="rounded border border-[var(--neon-rose)]/40 px-2 py-1 text-[9px] font-bold uppercase text-[var(--neon-rose)] hover:bg-[var(--neon-rose)]/12"
                   >
                     ters
-                  </button>
+                  </Btn>
                 </div>
               ))}
             </div>

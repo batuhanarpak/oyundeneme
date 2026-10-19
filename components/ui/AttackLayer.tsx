@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/store/useGameStore';
 import { sfx } from '@/lib/sfx';
+import { IconAlert } from '@/components/ui/Icons';
 
 const LABEL: Record<string, string> = {
   glitch: 'GLITCH ENJEKSİYONU',
@@ -51,7 +52,7 @@ export const AttackLayer: React.FC<{ children: React.ReactNode }> = ({ children 
               boxShadow: '0 0 32px rgba(244,63,94,0.4)',
             }}
           >
-            <span className="text-lg">⚠</span>
+            <IconAlert size={20} className="shrink-0 text-[var(--neon-rose)]" />
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--neon-rose)]">
                 {LABEL[a.kind] ?? 'SALDIRI'}

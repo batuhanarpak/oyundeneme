@@ -10,6 +10,8 @@ import { sfx } from '@/lib/sfx';
 import { PORTRAITS } from '@/components/ui/Portraits';
 import { FacilityMap, SpectrumAnalyser, CircuitDiagram } from '@/components/ui/Schematics';
 import { IconLock, IconUnlock, IconWave, IconGrid, IconUsers, IconChevron } from '@/components/ui/Icons';
+import { TerminalScreen } from '@/components/ui/TerminalScreen';
+import { alpha } from '@/lib/color';
 
 /* ============================================================
    GHOST — the physical layer. Sees the room, not the data.
@@ -202,7 +204,7 @@ const ArchitectView: React.FC<{ stage: number; onSolve: () => void; solved: bool
   };
 
   const load = open.reduce((sum, i) => sum + s.architect.grid[i], 0);
-  const over = load > 5;
+  const over = load > s.architect.limit;
 
   return (
     <div className="space-y-4">
@@ -211,10 +213,10 @@ const ArchitectView: React.FC<{ stage: number; onSolve: () => void; solved: bool
         <div className="mt-4">
           <Meter
             value={load}
-            max={8}
+            max={s.architect.limit}
             color={over ? 'var(--neon-rose)' : 'var(--neon-green)'}
             height={10}
-            label="TOPLAM YÜK"
+            label={`HAT YÜKÜ — SINIR ${s.architect.limit}`}
           />
         </div>
       </Panel>
@@ -226,7 +228,9 @@ const ArchitectView: React.FC<{ stage: number; onSolve: () => void; solved: bool
         right={solved ? <Chip color="var(--neon-green)">AÇIK</Chip> : <Chip color="var(--neon-rose)">KİLİTLİ</Chip>}
       >
         <p className="mb-3 text-xs text-[var(--text-lo)]">{s.architect.prompt}</p>
-        <div className="mb-4 grid grid-cols-5 gap-2">
+        {/* Five columns are the puzzle, so they stay; the cells just tighten
+            up on a phone rather than overflowing. */}
+        <div className="mb-4 grid grid-cols-5 gap-1.5 sm:gap-2">
           {s.architect.grid.map((g, i) => {
             const on = open.includes(i);
             return (
@@ -234,7 +238,7 @@ const ArchitectView: React.FC<{ stage: number; onSolve: () => void; solved: bool
                 key={i}
                 onClick={() => toggle(i)}
                 disabled={solved}
-                className="rounded-lg border p-3 transition-all disabled:opacity-60"
+                className="rounded-lg border p-2 transition-all disabled:opacity-60 sm:p-3"
                 style={{
                   borderColor: on ? 'var(--neon-green)' : 'var(--line-strong)',
                   background: on ? 'rgba(74,222,128,0.14)' : 'rgba(255,255,255,0.02)',
@@ -311,7 +315,7 @@ const RoleCards: React.FC<{
             className="panel group relative overflow-hidden p-0 text-left transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40"
             style={{
               borderColor: on && !isTaken ? r.color : undefined,
-              boxShadow: on && !isTaken ? `0 0 36px ${r.color}33` : undefined,
+              boxShadow: on && !isTaken ? `0 0 36px ${alpha(r.color, 0.2)}` : undefined,
               transform: on && !isTaken ? 'translateY(-4px)' : undefined,
             }}
           >
@@ -321,7 +325,7 @@ const RoleCards: React.FC<{
               <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#070b12] to-transparent" />
               <span
                 className="absolute right-3 top-3 rounded px-2 py-0.5 text-[9px] font-black uppercase tracking-widest"
-                style={{ background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}55` }}
+                style={{ background: `${alpha(r.color, 0.13)}`, color: r.color, border: `1px solid ${alpha(r.color, 0.33)}` }}
               >
                 {isTaken ? 'DOLU' : r.codename}
               </span>
@@ -369,8 +373,14 @@ export const BreachMode: React.FC = () => {
 
   const [stage, setStage] = useState(0);
   const [configuring, setConfiguring] = useState(true);
+  /* Elapsed seconds once the run starts; the end screen reports it. */
+  const [elapsed, setElapsed] = useState(0);
+  /* Bumped when a run restarts. Completion flags are keyed on it, so a fresh
+     operation never inherits the last one's solved layers — `shared` outlives
+     the component. */
+  const [runId, setRunId] = useState(1);
 
-  const stageKey = `breach:stage${stage}`;
+  const stageKey = `breach:run${runId}:stage${stage}`;
   const oracleDone = Boolean(shared[`${stageKey}:oracle`]);
   const archDone = Boolean(shared[`${stageKey}:architect`]);
   const ghostDone = Boolean(shared[`${stageKey}:ghost`]);
@@ -381,7 +391,17 @@ export const BreachMode: React.FC = () => {
   const complete = (layer: 'oracle' | 'architect' | 'ghost') => postShared(`${stageKey}:${layer}`, true);
 
   const allDone = oracleDone && archDone && ghostDone;
+  /* The last stage is the only one that ends the operation. */
+  const isFinalStage = stage === BREACH_STAGES.length - 1;
+  const won = allDone && isFinalStage && !configuring;
   const [advanced, setAdvanced] = useState(false);
+
+  /* Run clock. Stops once the operation is complete. */
+  useEffect(() => {
+    if (configuring || won) return;
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(id);
+  }, [configuring, won]);
 
   /* ---- automated subsystem (2-player mode) ----
      Stands in for the missing third operator: waits a few seconds, then
@@ -413,6 +433,39 @@ export const BreachMode: React.FC = () => {
     }
     if (!allDone) setAdvanced(false);
   }, [allDone, advanced, stage]);
+
+  /* ---- completion ----
+     Every layer on the final stage is solved: the operation is over, so the
+     mode hands off to the shared end screen rather than sitting on a banner. */
+  if (won) {
+    return (
+      <TerminalScreen
+        title="çekirdek erişimi sağlandı"
+        subtitle={`${BREACH_STAGES.length} katmanın tamamı aşıldı ve operasyon kaydı kapatıldı.`}
+        outcome="win"
+        stats={[
+          { label: 'katman', value: BREACH_STAGES.length, color: 'var(--neon-green)' },
+          { label: 'süre', value: `${elapsed}s` },
+          { label: 'operatör', value: breachPlayers },
+        ]}
+        onRetry={() => {
+          setStage(0);
+          setElapsed(0);
+          setAdvanced(false);
+          setRunId((r) => r + 1);
+          sfx.click();
+        }}
+        retryLabel="yeni operasyon"
+        onExit={() => {
+          setStage(0);
+          setElapsed(0);
+          setRunId((r) => r + 1);
+          setConfiguring(true);
+          setMode('hub');
+        }}
+      />
+    );
+  }
 
   /* ---------------- setup ---------------- */
   if (configuring) {
@@ -494,7 +547,7 @@ export const BreachMode: React.FC = () => {
                     className="panel overflow-hidden p-0 transition-all"
                     style={{
                       borderColor: on ? r.color : undefined,
-                      boxShadow: on ? `0 0 26px ${r.color}33` : undefined,
+                      boxShadow: on ? `0 0 26px ${alpha(r.color, 0.2)}` : undefined,
                     }}
                   >
                     <Portrait size={undefined} className="!h-20 !w-full !rounded-none !border-0" live={false} />
@@ -594,7 +647,7 @@ export const BreachMode: React.FC = () => {
                   <Chip color={oracleDone ? 'var(--neon-green)' : 'var(--neon-violet)'}>
                     ORACLE {oracleDone ? 'HAZIR' : 'ÇALIŞIYOR'}
                   </Chip>
-                  <Chip color={archDone ? 'var(--neon-green)' : 'var(--neon-green)'}>
+                  <Chip color={archDone ? 'var(--neon-green)' : 'var(--neon-rose)'}>
                     GEÇİŞ {archDone ? 'AÇIK' : 'KAPALI'}
                   </Chip>
                 </div>
@@ -639,11 +692,7 @@ export const BreachMode: React.FC = () => {
                 <p className="text-sm font-black uppercase tracking-[0.24em] text-[var(--neon-green)]">
                   katman aşıldı
                 </p>
-                <p className="mt-1 text-xs text-[var(--text-mid)]">
-                  {stage < BREACH_STAGES.length - 1
-                    ? 'Sonraki katmana geçiliyor...'
-                    : 'Çekirdek erişimi sağlandı. Operasyon tamamlandı.'}
-                </p>
+                <p className="mt-1 text-xs text-[var(--text-mid)]">Sonraki katmana geçiliyor...</p>
               </div>
             </Panel>
           )}

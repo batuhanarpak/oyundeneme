@@ -13,6 +13,7 @@ import {
   IconGhost, IconBrain, IconTower, IconUsers, IconChevron, IconTerminal, IconTarget,
 } from '@/components/ui/Icons';
 import type { Mode } from '@/store/useGameStore';
+import { alpha } from '@/lib/color';
 
 /** Space mode gets its own inline mark — a ship silhouette. */
 const IconShip: React.FC<{ size?: number; className?: string }> = ({ size = 20, className }) => (
@@ -46,7 +47,7 @@ const ModeArtwork: React.FC<{ id: Mode }> = ({ id }) => {
           <div
             key={c.id}
             className="flex h-24 items-end overflow-hidden rounded-lg border p-1.5"
-            style={{ background: c.backdrop, borderColor: `${c.accent}44` }}
+            style={{ background: c.backdrop, borderColor: `${alpha(c.accent, 0.27)}` }}
           >
             <span
               className="w-full text-center text-[7px] font-black uppercase leading-tight tracking-wider"
@@ -133,7 +134,7 @@ export const Hub: React.FC = () => {
         <div className="flex items-center gap-3">
           <span
             className="flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-black"
-            style={{ borderColor: color, color, background: `${color}14` }}
+            style={{ borderColor: color, color, background: `${alpha(color, 0.08)}` }}
           >
             {name.slice(0, 2)}
           </span>
@@ -169,7 +170,7 @@ export const Hub: React.FC = () => {
               className="panel group relative overflow-hidden p-6 text-left transition-all duration-300"
               style={{
                 borderColor: on ? m.accent : undefined,
-                boxShadow: on ? `0 0 44px ${m.accent}2e` : undefined,
+                boxShadow: on ? `0 0 44px ${alpha(m.accent, 0.18)}` : undefined,
                 transform: on ? 'translateY(-6px)' : undefined,
               }}
             >
@@ -186,7 +187,7 @@ export const Hub: React.FC = () => {
 
                 <div
                   className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border transition-all"
-                  style={{ borderColor: `${m.accent}55`, background: `${m.accent}12`, color: m.accent }}
+                  style={{ borderColor: `${alpha(m.accent, 0.33)}`, background: `${alpha(m.accent, 0.07)}`, color: m.accent }}
                 >
                   <Icon size={22} />
                 </div>

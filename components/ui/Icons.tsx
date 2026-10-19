@@ -156,3 +156,40 @@ export const IconWave = ({ className, size = 20 }: P) => (
     <path d="M2 12h3l2-7 3 14 3-11 2 7 2-3h5" />
   </svg>
 );
+
+export const IconAlert = ({ className, size = 20 }: P) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 3 2.5 20h19L12 3Z" />
+    <path d="M12 9.5v4.5" />
+    <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+/** Crossed blades — marks a garrison ready to march. */
+export const IconBlades = ({ className, size = 20 }: P) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 4l11 11M20 4 9 15" />
+    <path d="M14 20l3-3M10 20l-3-3" />
+    <path d="M4 4h3.5M20 4h-3.5" />
+  </svg>
+);
+
+export const IconCheck = ({ className, size = 20 }: P) => (
+  <svg {...base(size)} className={className}>
+    <path d="m4 12.5 5.5 5.5L20 6.5" />
+  </svg>
+);
+
+export const IconClose = ({ className, size = 20 }: P) => (
+  <svg {...base(size)} className={className}>
+    <path d="M5 5l14 14M19 5 5 19" />
+  </svg>
+);
+
+export const IconSync = ({ className, size = 20 }: P) => (
+  <svg {...base(size)} className={className}>
+    <path d="M20 11a8 8 0 0 0-13.7-5.6L3 8" />
+    <path d="M4 13a8 8 0 0 0 13.7 5.6L21 16" />
+    <path d="M3 4v4h4M21 20v-4h-4" />
+  </svg>
+);

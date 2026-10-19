@@ -45,24 +45,24 @@ interface GameState {
   /** In 2-player mode, which role the automated subsystem covers. */
   autoRole: Role;
   setBreachSetup: (players: 2 | 3, autoRole: Role) => void;
-  /** Void Lance: chosen hull and ready flag, shared with the briefing room. */
-  spaceShip: string;
+  /** Void Lance: chosen chassis and ready flag, shared with the briefing room. */
+  spaceDrone: string;
   spaceReady: boolean;
-  setSpaceShip: (id: string) => void;
+  setSpaceDrone: (id: string) => void;
   setSpaceReady: (v: boolean) => void;
   /**
-   * Other pilots' ships in the arena, keyed by player id.
+   * Other pilots' drones in the arena, keyed by player id.
    *
-   * Void Lance runs one simulation per client, so remote ships are drawn from
+   * Void Lance runs one simulation per client, so remote drones are drawn from
    * these snapshots rather than simulated locally.
    */
   wingmen: Record<
     string,
-    { name: string; color: string; ship: string; x: number; y: number; angle: number; hull: number; maxHull: number; at: number }
+    { name: string; color: string; drone: string; x: number; y: number; angle: number; chassis: number; maxChassis: number; at: number }
   >;
   /**
    * Who owns the shared boss. Every client runs its own arena, so the boss is
-   * authoritative on exactly one ship — everyone else mirrors it and reports
+   * authoritative on exactly one drone — everyone else mirrors it and reports
    * hits rather than applying them.
    */
   bossHost: string;
@@ -205,9 +205,9 @@ export const useGame = create<GameState>((set, get) => ({
   autoRole: 'architect',
   setBreachSetup: (breachPlayers, autoRole) => set({ breachPlayers, autoRole }),
 
-  spaceShip: 'interceptor',
+  spaceDrone: 'interceptor',
   spaceReady: false,
-  setSpaceShip: (spaceShip) => set({ spaceShip }),
+  setSpaceDrone: (spaceDrone) => set({ spaceDrone }),
   setSpaceReady: (spaceReady) => set({ spaceReady }),
   wingmen: {},
   bossHost: '',
@@ -594,7 +594,7 @@ export const useGame = create<GameState>((set, get) => ({
           break;
         }
 
-        case 'space:ship': {
+        case 'space:drone': {
           if (msg.from === me) break;
           set((s) => ({
             wingmen: {
@@ -602,12 +602,12 @@ export const useGame = create<GameState>((set, get) => ({
               [msg.from]: {
                 name: msg.name,
                 color: msg.color,
-                ship: msg.ship,
+                drone: msg.drone,
                 x: msg.x,
                 y: msg.y,
                 angle: msg.angle,
-                hull: msg.hull,
-                maxHull: msg.maxHull,
+                chassis: msg.chassis,
+                maxChassis: msg.maxChassis,
                 at: Date.now(),
               },
             },

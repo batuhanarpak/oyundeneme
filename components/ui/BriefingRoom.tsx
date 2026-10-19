@@ -4,19 +4,20 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame, bossHostRef } from '@/store/useGameStore';
 import { net } from '@/lib/net';
 import { sfx } from '@/lib/sfx';
-import { SHIPS, SKILLS, formationName, mergeNames } from '@/config/space';
+import { DRONES, SKILLS, formationName, mergeNames } from '@/config/space';
 import { SKILL_ICONS } from '@/components/ui/SkillIcons';
 import { Btn, Chip } from '@/components/ui/Panel';
 import { IconUsers, IconBolt, IconTarget } from '@/components/ui/Icons';
+import { alpha } from '@/lib/color';
 
 /**
- * Void Lance briefing room.
+ * Drone Network defence — the mission room.
  *
- * Every pilot in the room picks a hull and marks ready. Once EVERYONE present
+ * Every pilot in the room picks a chassis and marks ready. Once EVERYONE present
  * is ready a countdown starts automatically and the squadron launches — no
  * one has to press a separate button.
  *
- * Presence is a repeating `space:join` broadcast (which carries our hull and
+ * Presence is a repeating `space:join` broadcast (which carries our chassis and
  * ready flag), so a late joiner immediately sees the current roster.
  */
 
@@ -25,7 +26,7 @@ export const LAUNCH_SECONDS = 5;
 interface Pilot {
   id: string;
   name: string;
-  ship: string;
+  drone: string;
   color: string;
   ready: boolean;
   at: number;
@@ -50,7 +51,7 @@ export function useSquadron(): Squadron {
 
   /* OUR OWN ready flag lives in the store so the caller and this hook agree. */
   const myReady = useGame((s) => s.spaceReady);
-  const myShip = useGame((s) => s.spaceShip);
+  const myDrone = useGame((s) => s.spaceDrone);
 
   /* Presence + ready broadcast. Re-sent often so late joiners catch up. */
   useEffect(() => {
@@ -60,7 +61,7 @@ export function useSquadron(): Squadron {
         t: 'space:join',
         from: playerId,
         name,
-        ship: myShip,
+        drone: myDrone,
         color,
         ready: myReady,
       });
@@ -68,7 +69,7 @@ export function useSquadron(): Squadron {
     announce();
     const id = setInterval(announce, 1200);
     return () => clearInterval(id);
-  }, [playerId, name, color, myShip, myReady]);
+  }, [playerId, name, color, myDrone, myReady]);
 
   /* Listen for other pilots; drop the ones that go quiet. */
   useEffect(() => {
@@ -76,7 +77,7 @@ export function useSquadron(): Squadron {
       if (msg.t === 'space:join') {
         setOthers((prev) => [
           ...prev.filter((p) => p.id !== msg.from),
-          { id: msg.from, name: msg.name, ship: msg.ship, color: msg.color, ready: msg.ready, at: Date.now() },
+          { id: msg.from, name: msg.name, drone: msg.drone, color: msg.color, ready: msg.ready, at: Date.now() },
         ]);
       }
       if (msg.t === 'space:leave') {
@@ -97,13 +98,13 @@ export function useSquadron(): Squadron {
   /* The roster always includes us, carrying OUR real ready state. */
   const roster = useMemo<Pilot[]>(
     () => [
-      { id: playerId, name, ship: myShip, color, ready: myReady, at: Date.now() },
+      { id: playerId, name, drone: myDrone, color, ready: myReady, at: Date.now() },
       ...others.filter((p) => p.id !== playerId),
     ],
-    [others, playerId, name, myShip, color, myReady]
+    [others, playerId, name, myDrone, color, myReady]
   );
 
-  /* Two pilots minimum, and every one of them ready. */
+/* Two operators minimum, and every one of them ready. */
   const allReady = roster.length >= 2 && roster.every((p) => p.ready);
 
   /* Countdown: starts the moment the room is cleared, and cancels if anyone
@@ -143,15 +144,15 @@ export function useSquadron(): Squadron {
    Broadcast helpers
    ============================================================ */
 
-/** Re-announces our hull from outside the hook. */
-export function announcePilot(shipId: string, ready: boolean) {
+/** Re-announces our chassis from outside the hook. */
+export function announcePilot(droneId: string, ready: boolean) {
   const s = useGame.getState();
   if (!s.playerId) return;
   net.send({
     t: 'space:join',
     from: s.playerId,
     name: s.name,
-    ship: shipId,
+    drone: droneId,
     color: s.color,
     ready,
   });
@@ -200,9 +201,9 @@ export const BriefingRoom: React.FC<{
   onBack: () => void;
 }> = ({ onLaunch, onBack }) => {
   const sq = useSquadron();
-  const setSpaceShip = useGame((s) => s.setSpaceShip);
+  const setSpaceDrone = useGame((s) => s.setSpaceDrone);
   const setSpaceReady = useGame((s) => s.setSpaceReady);
-  const myShipId = useGame((s) => s.spaceShip);
+  const myDroneId = useGame((s) => s.spaceDrone);
   const ready = useGame((s) => s.spaceReady);
   const playerId = useGame((s) => s.playerId);
   const launchedRef = useRef(false);
@@ -222,23 +223,23 @@ export const BriefingRoom: React.FC<{
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <div className="text-center">
-        <p className="label">void lance</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight text-white">BRIEFING ODASI</h1>
+        <p className="label">drone network</p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight text-white">OPERASYON ODASI</h1>
         <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-[var(--text-mid)]">
-          Gövdenizi seçin ve hazır olun. Herkes hazır olduğunda geri sayım başlar ve filo otomatik
-          olarak fırlatılır.
+          Platformunuzu seçin ve hazır olun. Herkes hazır olduğunda geri sayım başlar ve filo
+          otomatik olarak ağa bağlanır.
         </p>
       </div>
 
       {/* Countdown takeover */}
       {sq.countdown !== null && (
         <div className="panel anim-rise border-[var(--neon-green)] p-6 text-center" style={{ boxShadow: '0 0 44px rgba(74,222,128,0.3)' }}>
-          <p className="label mb-2">tüm pilotlar hazır — fırlatmaya</p>
+          <p className="label mb-2">tüm operatörler hazır — bağlanmaya</p>
           <p
             key={sq.countdown}
             className="anim-rise text-7xl font-black text-[var(--neon-green)] text-glow"
           >
-            {sq.countdown > 0 ? sq.countdown : 'FIRLAT!'}
+            {sq.countdown > 0 ? sq.countdown : 'BAĞLAN!'}
           </p>
           <p className="mt-2 text-[10px] uppercase tracking-[0.24em] text-[var(--text-lo)]">
             {formationName(sq.pilots.length)} oluşturuluyor
@@ -249,7 +250,7 @@ export const BriefingRoom: React.FC<{
       {/* Roster */}
       <div className="panel p-4">
         <div className="mb-3 flex items-center justify-between">
-          <p className="label">filo — {sq.pilots.length} pilot</p>
+          <p className="label">filo — {sq.pilots.length} operatör</p>
           <Chip color={sq.allReady ? 'var(--neon-green)' : 'var(--text-lo)'}>
             <IconUsers size={10} /> {readyCount}/{sq.pilots.length} hazır
           </Chip>
@@ -257,19 +258,19 @@ export const BriefingRoom: React.FC<{
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {sq.pilots.map((p) => {
-            const sp = SHIPS.find((x) => x.id === p.ship);
+            const sp = DRONES.find((x) => x.id === p.drone);
             const isMe = p.id === playerId;
             return (
               <div
                 key={p.id}
                 className="rounded-lg border p-3 text-center transition-all"
                 style={{
-                  borderColor: p.ready ? '#4ade80' : `${p.color}55`,
-                  background: p.ready ? 'rgba(74,222,128,0.09)' : `${p.color}0d`,
+                  borderColor: p.ready ? '#4ade80' : `${alpha(p.color, 0.33)}`,
+                  background: p.ready ? 'rgba(74,222,128,0.09)' : `${alpha(p.color, 0.05)}`,
                 }}
               >
                 <svg viewBox="-30 -30 60 60" className="mx-auto h-12 w-12">
-                  <g style={{ filter: `drop-shadow(0 0 6px ${p.color})`, opacity: p.ship ? 1 : 0.35 }}>
+                  <g style={{ filter: `drop-shadow(0 0 6px ${p.color})`, opacity: p.drone ? 1 : 0.35 }}>
                     <path d="M0 -24 L16 13 L7 8 L0 18 L-7 8 L-16 13 Z" fill="#0b1220" stroke={p.color} strokeWidth="2.2" />
                     <ellipse cx="0" cy="-6" rx="4.5" ry="8" fill={p.color} fillOpacity="0.85" />
                   </g>
@@ -279,7 +280,7 @@ export const BriefingRoom: React.FC<{
                   {isMe ? ' (SEN)' : ''}
                 </p>
                 <p className="truncate text-[9px] text-[var(--text-lo)]">
-                  {sp ? sp.name : 'gövde seçilmedi'}
+                  {sp ? sp.name : 'platform seçilmedi'}
                 </p>
                 <p
                   className="mt-1 text-[9px] font-bold uppercase tracking-widest"
@@ -313,28 +314,28 @@ export const BriefingRoom: React.FC<{
         </div>
       )}
 
-      {/* Hull picker */}
+      {/* Chassis picker */}
       <div>
-        <p className="label mb-3">gövdeni seç</p>
+        <p className="label mb-3">platformunu seç</p>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-          {SHIPS.map((sp) => {
-            const on = myShipId === sp.id;
+          {DRONES.map((sp) => {
+            const on = myDroneId === sp.id;
             return (
               <button
                 key={sp.id}
                 onClick={() => {
-                  setSpaceShip(sp.id);
+                  setSpaceDrone(sp.id);
                   sfx.click();
                 }}
                 className="panel overflow-hidden p-0 transition-all"
                 style={{
                   borderColor: on ? sp.color : undefined,
-                  boxShadow: on ? `0 0 26px ${sp.color}44` : undefined,
+                  boxShadow: on ? `0 0 26px ${alpha(sp.color, 0.27)}` : undefined,
                 }}
               >
                 <div
                   className="flex h-16 items-center justify-center"
-                  style={{ background: `radial-gradient(ellipse at center, ${sp.color}22, #04060c 72%)` }}
+                  style={{ background: `radial-gradient(ellipse at center, ${alpha(sp.color, 0.13)}, #04060c 72%)` }}
                 >
                   <svg viewBox="-30 -30 60 60" className="h-12 w-12">
                     <g style={{ filter: `drop-shadow(0 0 6px ${sp.color})` }}>

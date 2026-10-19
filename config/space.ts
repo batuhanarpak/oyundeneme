@@ -1,8 +1,9 @@
 /**
- * Void Lance — ship classes, skills and the boss table.
+ * Drone Network Defence — drone classes, skills and the intrusion table.
  *
- * Five hulls. Each has its OWN five-skill loadout: no two ships share the same
- * set, so picking a hull is picking a playstyle rather than a stat line.
+ * Five drone platforms. Each has its OWN five-skill loadout: no two drones
+ * share the same set, so picking a platform is picking a playstyle rather than
+ * a stat line.
  *
  * Skills that fire projectiles (`projectile`) swap your cannon for a special
  * round for their duration — fireball, ice ball, energy orb or cluster shell —
@@ -63,16 +64,16 @@ export const SKILLS: Record<SkillId, SkillDef> = {
 };
 
 /* ============================================================
-   Ships — every loadout is distinct
+   Drones — every loadout is distinct
    ============================================================ */
 
-export interface ShipDef {
+export interface DroneDef {
   id: string;
   name: string;
   callsign: string;
   color: string;
   speed: number;
-  hull: number;
+  chassis: number;
   fireRate: number;
   damage: number;
   bulletSpeed: number;
@@ -82,75 +83,75 @@ export interface ShipDef {
   skills: SkillId[];
 }
 
-export const SHIPS: ShipDef[] = [
+export const DRONES: DroneDef[] = [
   {
     id: 'interceptor',
-    name: 'INTERCEPTOR',
+    name: 'SİT-1 INTERCEPTOR',
     callsign: 'ÖNLEME',
     color: '#22d3ee',
     speed: 5.2,
-    hull: 80,
+    chassis: 80,
     fireRate: 130,
     damage: 7,
     bulletSpeed: 11,
     scale: 0.85,
-    desc: 'Hızlı ve çevik. Vur-kaç için tasarlandı: ışınlan, kalkanlan, enerji küresiyle kaç.',
+    desc: 'Hızlı ve çevik. Sızma karşıtı drone: ışınlan, kalkanlan, enerji küresiyle kaç.',
     skills: ['blink', 'shield', 'energyball', 'overdrive', 'stun'],
   },
   {
     id: 'juggernaut',
-    name: 'JUGGERNAUT',
+    name: 'SIT-X JUGGERNAUT',
     callsign: 'KUŞATMA',
     color: '#f43f5e',
     speed: 2.8,
-    hull: 190,
+    chassis: 190,
     fireRate: 320,
     damage: 22,
     bulletSpeed: 8,
     scale: 1.25,
-    desc: 'Ağır zırhlı kuşatma platformu. Alev topları ve parçalı bombalarla alanı temizler.',
+    desc: 'Ağır zırhlı savunma platformu. Alev topları ve parçalı bombalarla alanı temizler.',
     skills: ['fireball', 'fortify', 'cluster', 'stun', 'heal'],
   },
   {
     id: 'phantom',
-    name: 'PHANTOM',
+    name: 'SIT-P PHANTOM',
     callsign: 'HAYALET',
     color: '#a78bfa',
     speed: 6.0,
-    hull: 95,
+    chassis: 95,
     fireRate: 170,
     damage: 11,
     bulletSpeed: 13,
     scale: 0.8,
-    desc: 'Görünmez avcı. Buz küreleriyle hedefi kilitler, kimse onu göremez.',
+    desc: 'Görünmez sızıntı avcısı. Buz küreleriyle hedefi kilitler, kimse onu göremez.',
     skills: ['cloak', 'iceball', 'blink', 'sleep', 'overdrive'],
   },
   {
     id: 'artillery',
-    name: 'ARTILLERY',
+    name: 'SIT-A ARTILLERY',
     callsign: 'TOPKU',
     color: '#fbbf24',
     speed: 2.4,
-    hull: 140,
+    chassis: 140,
     fireRate: 420,
     damage: 34,
     bulletSpeed: 6.5,
     scale: 1.35,
-    desc: 'Uzun menzilli kuşatma. Yavaş ama tek isabette kalabalığı eritir.',
+    desc: 'Uzun menzilli veri imha sistemi. Yavaş ama tek isabette kalabalığı eritir.',
     skills: ['fireball', 'cluster', 'slow', 'energyball', 'fortify'],
   },
   {
     id: 'support',
-    name: 'SUPPORT',
+    name: 'SIT-S SUPPORT',
     callsign: 'DESTEK',
     color: '#4ade80',
     speed: 4.0,
-    hull: 120,
+    chassis: 120,
     fireRate: 220,
     damage: 9,
     bulletSpeed: 9.5,
     scale: 1.0,
-    desc: 'Filo doktoru. Onarır, kalkanlar, düşmanı yavaşlatır — kimseyi kaybetmez.',
+    desc: 'Sistem onarım drone\'u. Onarır, kalkanlar, düşmanı yavaşlatır — kimseyi kaybetmez.',
     skills: ['heal', 'shield', 'energyball', 'slow', 'iceball'],
   },
 ];
@@ -160,7 +161,7 @@ export const SHIPS: ShipDef[] = [
    ============================================================ */
 
 export interface ProjectileDef {
-  /** Damage multiplier over the ship's base. */
+  /** Damage multiplier over the drone's base. */
   damageMul: number;
   /** Speed multiplier. */
   speedMul: number;
@@ -194,9 +195,9 @@ export interface BossPhase {
 }
 
 export const BOSS_PHASES: BossPhase[] = [
-  { below: 1.0, name: 'KOVAN KRALİÇESİ', spawnEvery: 2600, attackEvery: 2200, color: '#f43f5e' },
-  { below: 0.66, name: 'KIZGIN KOVAN', spawnEvery: 1900, attackEvery: 1600, color: '#f97316' },
-  { below: 0.33, name: 'ÖLÜM KOVANI', spawnEvery: 1300, attackEvery: 1000, color: '#dc2626' },
+  { below: 1.0, name: 'SÜRÜ ÇEKİRDEĞİ', spawnEvery: 2600, attackEvery: 2200, color: '#f43f5e' },
+  { below: 0.66, name: 'KIZGIN SÜRÜ', spawnEvery: 1900, attackEvery: 1600, color: '#f97316' },
+  { below: 0.33, name: 'ÇÖKÜŞ SÜRÜSÜ', spawnEvery: 1300, attackEvery: 1000, color: '#dc2626' },
 ];
 
 export const BOSS_MAX_HP = 3000;
@@ -206,10 +207,10 @@ export const BOSS_SHOT_DAMAGE = 8;
    Formation names
    ============================================================ */
 
-export const FORMATION_NAMES = ['', 'SOLO LANCE', 'DUAL STRIKER', 'TRIPLE PHALANX', 'QUAD SPECTRE', 'MEGA QUINTET'];
+export const FORMATION_NAMES = ['', 'SOLO FILO', 'İKİLİ DÜZEN', 'ÜÇLÜ ÇEMBER', 'DÖRTLÜ AĞ', 'TAM FİLO'];
 
 export function formationName(count: number) {
-  return FORMATION_NAMES[Math.min(count, FORMATION_NAMES.length - 1)] ?? `MEGA x${count}`;
+  return FORMATION_NAMES[Math.min(count, FORMATION_NAMES.length - 1)] ?? `FİLO x${count}`;
 }
 
 /** Blends the first syllables of each callsign into one name. */

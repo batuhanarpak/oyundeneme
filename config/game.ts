@@ -47,12 +47,12 @@ export const MODES: ModeDef[] = [
   },
   {
     id: 'space',
-    name: 'VOID LANCE',
-    tag: 'UZAY SAVAŞI',
+    name: 'DRONE NETWORK',
+    tag: 'AĞ SAVUNMASI',
     blurb:
-      'Beş gemi sınıfı, otuz yetenek, üç fazlı bir kovan kraliçesi. Pilotlar birleşip tek bir dev gemi olabilir — ya da ayrı ayrı avlanır.',
+      'Beş drone platformu, otuz yetenek, üç fazlı bir sürü çekirdeği. Operatörler tek filo olup ağı birlikte temizler — ya da ayrı ayrı avlanır.',
     accent: 'var(--neon-violet)',
-    players: '1-5 PİLOT',
+    players: '1-5 OPERATÖR',
     duration: '10-20 DK',
   },
 ];
@@ -153,7 +153,7 @@ export interface BreachStage {
   /** What the Oracle must decode and shout across. */
   oracle: { cipher: string; answer: string; prompt: string };
   /** What the Architect must route power to. */
-  architect: { grid: number[]; solution: number[]; prompt: string };
+  architect: { grid: number[]; solution: number[]; limit: number; prompt: string };
   /** What the Ghost must physically do with the decoded intel. */
   ghost: { prompt: string; options: string[]; correct: number };
 }
@@ -168,12 +168,13 @@ export const BREACH_STAGES: BreachStage[] = [
     },
     architect: {
       grid: [1, 0, 1, 1, 0],
-      solution: [1, 2, 4],
-      prompt: 'Toplam yük 3 birimi aşmasın. Hangi üç hattı açık tutarsın?',
+      solution: [0, 2, 3],
+      limit: 3,
+      prompt: 'Kapı hattı toplam 3 birim çeker. Değeri 1 olan tüm hatları aç.',
     },
     ghost: {
-      prompt: 'Kod adı HAT. Hangi kapıdan geçersin?',
-      options: ['Servis Koridoru', 'Havalandırma Bacası', 'Ana Giriş', 'Yük Asansörü'],
+      prompt: 'Kod adı HAT. Harf sayısı, geçeceğin kapının numarasıdır.',
+      options: ['Kapı 01', 'Kapı 03', 'Kapı 05', 'Kapı 08'],
       correct: 1,
     },
   },
@@ -186,12 +187,13 @@ export const BREACH_STAGES: BreachStage[] = [
     },
     architect: {
       grid: [2, 2, 0, 3, 1],
-      solution: [0, 3, 4],
-      prompt: 'Sunucu odasına giden hatları besle. Toplam 5 birim sınırı var.',
+      solution: [0, 1, 4],
+      limit: 5,
+      prompt: 'Sunucu odasına giden hatlar yalnızca 2 ve 1 çeker. Değeri 2 olan tüm hatları ve değeri 1 olan hattı aç.',
     },
     ghost: {
-      prompt: 'Anahtar ACCESS. Kamera kaydını hangi saniyeye sararsın?',
-      options: ['00:12:04', '00:44:31', '01:02:19', '02:30:55'],
+      prompt: 'Anahtar ACCESS. Harf sayısı, çekirdek düğümünün numarasıdır.',
+      options: ['Düğüm 04', 'Düğüm 06', 'Düğüm 08', 'Düğüm 12'],
       correct: 1,
     },
   },
@@ -204,13 +206,14 @@ export const BREACH_STAGES: BreachStage[] = [
     },
     architect: {
       grid: [3, 1, 2, 2, 0],
-      solution: [1, 2, 3],
-      prompt: 'Üç başlı korumayı uyut. Dengeyi bozma.',
+      solution: [2, 3],
+      limit: 4,
+      prompt: 'Üç başlı korumayı uyut. Yalnızca değeri 2 olan hatları aç — fazlası korumayı uyandırır.',
     },
     ghost: {
-      prompt: 'Süreç adı CERBERUS. Hangi düğümü fiziksel olarak çekersin?',
-      options: ['Düğüm 07', 'Düğüm 13', 'Düğüm 21', 'Düğüm 34'],
-      correct: 2,
+      prompt: 'Süreç adı CERBERUS. Harf sayısı, çekeceğin düğümün numarasıdır.',
+      options: ['Düğüm 06', 'Düğüm 08', 'Düğüm 11', 'Düğüm 14'],
+      correct: 1,
     },
   },
 ];

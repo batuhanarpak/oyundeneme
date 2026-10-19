@@ -9,6 +9,10 @@ out/
 # Production build
 build/
 
+# Local dev state for the Cloudflare relay / retired PartyKit platform
+.wrangler/
+.partykit/
+
 # Debug logs
 npm-debug.log*
 yarn-debug.log*

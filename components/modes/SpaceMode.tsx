@@ -11,20 +11,23 @@ import {
   BOSS_PHASES,
   BOSS_SHOT_DAMAGE,
   PROJECTILES,
-  SHIPS,
+  DRONES,
   SKILLS,
   type ProjectileKind,
   type SkillId,
 } from '@/config/space';
+import { Btn } from '@/components/ui/Panel';
+import { TerminalScreen } from '@/components/ui/TerminalScreen';
+import { alpha, PALETTE } from '@/lib/color';
 
 /**
- * Void Lance — the co-op space arena.
+ * Drone Network Defence — the co-op tactical arena.
  *
  * Canvas game rather than DOM: hundreds of bullets and insects per second
  * would crush a React tree. The simulation runs in one rAF loop and writes to
  * refs; React only re-renders the HUD a few times a second.
  *
- * Multiplayer over BroadcastChannel: each client simulates its own ship and
+ * Multiplayer over BroadcastChannel: each client simulates its own drone and
  * the shared boss, which stays consistent because the spawn and damage events
  * are broadcast and the boss HP is owned by whoever lands the hit.
  */
@@ -32,14 +35,17 @@ import {
 const W = 1280;
 const H = 720;
 
-interface Ship {
+/** Swarms to clear before the network is declared secure. */
+const FINAL_WAVE = 3;
+
+interface Drone {
   x: number;
   y: number;
   vx: number;
   vy: number;
   angle: number;
-  hull: number;
-  maxHull: number;
+  chassis: number;
+  maxChassis: number;
   energy: number;
   alive: boolean;
   color: string;
@@ -93,13 +99,13 @@ export const SpaceMode: React.FC = () => {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [picked, setPicked] = useState(false);
-  const shipId = useGame((s) => s.spaceShip);
-  const ship = useMemo(() => SHIPS.find((s) => s.id === shipId) ?? SHIPS[0], [shipId]);
+  const droneId = useGame((s) => s.spaceDrone);
+  const drone = useMemo(() => DRONES.find((s) => s.id === droneId) ?? DRONES[0], [droneId]);
   const squadron = useSquadron();
 
   /* ---- mutable simulation state (kept out of React) ---- */
   const sim = useRef({
-    ship: { x: W / 2, y: H / 2, vx: 0, vy: 0, angle: 0, hull: 100, maxHull: 100, energy: 0, alive: true, color: '#22d3ee' } as Ship,
+    drone: { x: W / 2, y: H / 2, vx: 0, vy: 0, angle: 0, chassis: 100, maxChassis: 100, energy: 0, alive: true, color: '#22d3ee' } as Drone,
     bullets: [] as Bullet[],
     enemies: [] as Enemy[],
     stars: [] as Star[],
@@ -119,12 +125,11 @@ export const SpaceMode: React.FC = () => {
     /** Which special round is loaded, or null for standard shots. */
     roundUntil: 0,
     round: null as ProjectileKind | null,
-    /* Ship buffs */
+    /* Drone buffs */
     overdriveUntil: 0,
     shieldUntil: 0,
     fortifyUntil: 0,
     cloakUntil: 0,
-    ricochetUntil: 0,
     nextId: 1,
     score: 0,
     wave: 1,
@@ -134,16 +139,19 @@ export const SpaceMode: React.FC = () => {
   });
 
   const [hud, setHud] = useState({
-    hull: 100,
+    chassis: 100,
     energy: 0,
     score: 0,
     bossHp: BOSS_MAX_HP,
     phase: 0,
     enemies: 0,
     alive: true,
+    wave: 1,
   });
   /* Which skills are currently burning, so the HUD can light them up. */
   const [activeUntil, setActiveUntil] = useState<Partial<Record<SkillId, number>>>({});
+  /* Set by the boss host when the last swarm falls. */
+  const [won, setWon] = useState(false);
 
   /* ============================================================
      Setup
@@ -151,17 +159,17 @@ export const SpaceMode: React.FC = () => {
   useEffect(() => {
     if (!picked) return;
     const s = sim.current;
-    s.ship = {
+    s.drone = {
       x: W / 2,
       y: H * 0.68,
       vx: 0,
       vy: 0,
       angle: -90,
-      hull: ship.hull,
-      maxHull: ship.hull,
+      chassis: drone.chassis,
+      maxChassis: drone.chassis,
       energy: 40,
       alive: true,
-      color: ship.color,
+      color: drone.color,
     };
     s.stars = Array.from({ length: 320 }, () => ({
       x: Math.random() * W,
@@ -174,7 +182,10 @@ export const SpaceMode: React.FC = () => {
     s.bossHp = BOSS_MAX_HP;
     s.bossPhase = 0;
     s.score = 0;
-  }, [picked, ship]);
+    s.wave = 1;
+    setWon(false);
+    sawLiveBoss.current = false;
+  }, [picked, drone]);
 
   /* ---- input ---- */
   useEffect(() => {
@@ -184,11 +195,11 @@ export const SpaceMode: React.FC = () => {
     const down = (e: KeyboardEvent) => {
       s.keys[e.key.toLowerCase()] = true;
       if (['w', 'a', 's', 'd', ' '].includes(e.key.toLowerCase())) e.preventDefault();
-      if (e.key.toLowerCase() === 'q') castSkill(ship.skills[0]);
-      if (e.key.toLowerCase() === 'e') castSkill(ship.skills[1]);
-      if (e.key.toLowerCase() === 'r') castSkill(ship.skills[2]);
-      if (e.key.toLowerCase() === 'f') castSkill(ship.skills[3]);
-      if (e.key.toLowerCase() === 'c') castSkill(ship.skills[4]);
+      if (e.key.toLowerCase() === 'q') castSkill(drone.skills[0]);
+      if (e.key.toLowerCase() === 'e') castSkill(drone.skills[1]);
+      if (e.key.toLowerCase() === 'r') castSkill(drone.skills[2]);
+      if (e.key.toLowerCase() === 'f') castSkill(drone.skills[3]);
+      if (e.key.toLowerCase() === 'c') castSkill(drone.skills[4]);
     };
     const up = (e: KeyboardEvent) => {
       s.keys[e.key.toLowerCase()] = false;
@@ -200,17 +211,17 @@ export const SpaceMode: React.FC = () => {
       window.removeEventListener('keyup', up);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picked, ship]);
+  }, [picked, drone]);
 
   /* ---- skills ---- */
   const castSkill = (id: SkillId) => {
     const s = sim.current;
     const def = SKILLS[id];
-    if (!def || s.ship.energy < def.cost || !s.ship.alive) {
+    if (!def || s.drone.energy < def.cost || !s.drone.alive) {
       sfx.deny();
       return;
     }
-    s.ship.energy -= def.cost;
+    s.drone.energy -= def.cost;
     const until = Date.now() + def.duration * 1000;
     setActiveUntil((a) => ({ ...a, [id]: until }));
 
@@ -253,16 +264,16 @@ export const SpaceMode: React.FC = () => {
         sfx.power();
         break;
       case 'heal':
-        s.ship.hull = Math.min(s.ship.maxHull, s.ship.hull + 45);
+        s.drone.chassis = Math.min(s.drone.maxChassis, s.drone.chassis + 45);
         sfx.success();
         break;
       case 'blink':
         /* Jump to the crosshair, keeping momentum dead so it reads as a port. */
-        s.ship.x = Math.max(30, Math.min(W - 30, mouse.current.x));
-        s.ship.y = Math.max(30, Math.min(H - 30, mouse.current.y));
-        s.ship.vx = 0;
-        s.ship.vy = 0;
-        spawnBurst(s.ship.x, s.ship.y, '#facc15', 34);
+        s.drone.x = Math.max(30, Math.min(W - 30, mouse.current.x));
+        s.drone.y = Math.max(30, Math.min(H - 30, mouse.current.y));
+        s.drone.vx = 0;
+        s.drone.vy = 0;
+        spawnBurst(s.drone.x, s.drone.y, '#facc15', 34);
         sfx.power();
         break;
     }
@@ -282,7 +293,7 @@ export const SpaceMode: React.FC = () => {
     let raf = 0;
     let last = performance.now();
     let hudTick = 0;
-    let lastShipSync = 0;
+    let lastDroneSync = 0;
     let lastBossSync = 0;
 
     const loop = (now: number) => {
@@ -293,47 +304,81 @@ export const SpaceMode: React.FC = () => {
       const s = sim.current;
       const t = Date.now();
 
-      /* ---------------- ship ---------------- */
-      const acc = ship.speed * 0.22;
-      if (s.keys['w']) s.ship.vy -= acc * dt;
-      if (s.keys['s']) s.ship.vy += acc * dt;
-      if (s.keys['a']) s.ship.vx -= acc * dt;
-      if (s.keys['d']) s.ship.vx += acc * dt;
+      /* ---------------- drone ---------------- */
+      const acc = drone.speed * 0.22;
+      if (s.keys['w']) s.drone.vy -= acc * dt;
+      if (s.keys['s']) s.drone.vy += acc * dt;
+      if (s.keys['a']) s.drone.vx -= acc * dt;
+      if (s.keys['d']) s.drone.vx += acc * dt;
 
-      s.ship.vx *= 1 - 0.11 * dt;
-      s.ship.vy *= 1 - 0.11 * dt;
-      s.ship.vx = Math.max(-ship.speed, Math.min(ship.speed, s.ship.vx));
-      s.ship.vy = Math.max(-ship.speed, Math.min(ship.speed, s.ship.vy));
-      s.ship.x = Math.max(30, Math.min(W - 30, s.ship.x + s.ship.vx * dt));
-      s.ship.y = Math.max(30, Math.min(H - 30, s.ship.y + s.ship.vy * dt));
+      /* Touch steering: ease toward the finger, scaled down near contact so
+         the drone does not jitter around it. */
+      const steer = touchSteer.current;
+      if (steer) {
+        const dx = steer.x - s.drone.x;
+        const dy = steer.y - s.drone.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 8) {
+          const pull = Math.min(1, dist / 160);
+          s.drone.vx += (dx / dist) * acc * pull * dt;
+          s.drone.vy += (dy / dist) * acc * pull * dt;
+        }
+      }
 
-      /* Nose always tracks the crosshair. This used to be derived from
-         velocity, which meant the ship aimed wherever it drifted — the cursor
-         was ignored while moving and only took over once you stopped. */
-      s.ship.angle =
-        (Math.atan2(mouse.current.y - s.ship.y, mouse.current.x - s.ship.x) * 180) / Math.PI;
+      s.drone.vx *= 1 - 0.11 * dt;
+      s.drone.vy *= 1 - 0.11 * dt;
+      s.drone.vx = Math.max(-drone.speed, Math.min(drone.speed, s.drone.vx));
+      s.drone.vy = Math.max(-drone.speed, Math.min(drone.speed, s.drone.vy));
+      s.drone.x = Math.max(30, Math.min(W - 30, s.drone.x + s.drone.vx * dt));
+      s.drone.y = Math.max(30, Math.min(H - 30, s.drone.y + s.drone.vy * dt));
+
+      /* Nose tracks the crosshair. On touch there is no cursor, so it locks
+         onto the nearest threat instead — the cannon stays useful while the
+         finger is busy steering. */
+      let aimX = mouse.current.x;
+      let aimY = mouse.current.y;
+      if (steer) {
+        let best: Enemy | null = null;
+        let bestD = Infinity;
+        for (const e of s.enemies) {
+          if (e.hp <= 0) continue;
+          const d = Math.hypot(e.x - s.drone.x, e.y - s.drone.y);
+          if (d < bestD) {
+            bestD = d;
+            best = e;
+          }
+        }
+        if (best) {
+          aimX = best.x;
+          aimY = best.y;
+        } else if (s.bossHp > 0) {
+          aimX = s.bossX;
+          aimY = s.bossY;
+        }
+      }
+      s.drone.angle = (Math.atan2(aimY - s.drone.y, aimX - s.drone.x) * 180) / Math.PI;
 
       /* ---------------- firing ---------------- */
       const overdriven = t < s.overdriveUntil;
-      const rate = overdriven ? ship.fireRate * 0.5 : ship.fireRate;
-      if (s.firing && now - s.lastShot > rate && s.ship.alive) {
+      const rate = overdriven ? drone.fireRate * 0.5 : drone.fireRate;
+      if (s.firing && now - s.lastShot > rate && s.drone.alive) {
         s.lastShot = now;
-        const rad = (s.ship.angle * Math.PI) / 180;
+        const rad = (s.drone.angle * Math.PI) / 180;
         const loaded = t < s.roundUntil ? s.round : null;
         const pd = loaded ? PROJECTILES[loaded] : null;
 
-        const spd = ship.bulletSpeed * (pd?.speedMul ?? 1);
+        const spd = drone.bulletSpeed * (pd?.speedMul ?? 1);
         s.bullets.push({
           id: s.nextId++,
-          x: s.ship.x + Math.cos(rad) * 22,
-          y: s.ship.y + Math.sin(rad) * 22,
+          x: s.drone.x + Math.cos(rad) * 22,
+          y: s.drone.y + Math.sin(rad) * 22,
           vx: Math.cos(rad) * spd,
           vy: Math.sin(rad) * spd,
-          dmg: ship.damage * (pd?.damageMul ?? 1),
+          dmg: drone.damage * (pd?.damageMul ?? 1),
           life: 90,
           bounces: 0,
           from: 'player',
-          color: loaded ? SKILLS[loaded === 'fireball' ? 'fireball' : loaded === 'iceball' ? 'iceball' : loaded === 'energyball' ? 'energyball' : 'cluster'].color : ship.color,
+          color: loaded ? SKILLS[loaded === 'fireball' ? 'fireball' : loaded === 'iceball' ? 'iceball' : loaded === 'energyball' ? 'energyball' : 'cluster'].color : drone.color,
           kind: loaded,
         });
         sfx.key();
@@ -418,12 +463,12 @@ export const SpaceMode: React.FC = () => {
             if (!pd?.pierce) b.life = -1;
           }
         } else {
-          /* boss projectile vs our ship — shields absorb it entirely */
-          if (s.ship.alive && Math.hypot(s.ship.x - b.x, s.ship.y - b.y) < 20) {
+          /* boss projectile vs our drone — shields absorb it entirely */
+          if (s.drone.alive && Math.hypot(s.drone.x - b.x, s.drone.y - b.y) < 20) {
             const shielded = t < s.shieldUntil;
             const armored = t < s.fortifyUntil;
             if (!shielded) {
-              s.ship.hull -= BOSS_SHOT_DAMAGE * (armored ? 0.5 : 1);
+              s.drone.chassis -= BOSS_SHOT_DAMAGE * (armored ? 0.5 : 1);
               sfx.hit();
             }
             spawnBurst(b.x, b.y, shielded ? '#22d3ee' : '#f43f5e');
@@ -465,9 +510,9 @@ export const SpaceMode: React.FC = () => {
         e.y += e.vy * dt * speedScale;
         if (e.x < 24 || e.x > W - 24) e.vx *= -1;
 
-        /* Reaching our ship damages it. */
-        if (s.ship.alive && Math.hypot(e.x - s.ship.x, e.y - s.ship.y) < 26) {
-          s.ship.hull -= 6;
+        /* Reaching our drone damages it. */
+        if (s.drone.alive && Math.hypot(e.x - s.drone.x, e.y - s.drone.y) < 26) {
+          s.drone.chassis -= 6;
           e.hp = 0;
           spawnBurst(e.x, e.y, e.color);
           sfx.hit();
@@ -483,12 +528,25 @@ export const SpaceMode: React.FC = () => {
          client, so this must be a strict comparison — never a fallback. */
       const amBossHost = bossHostRef.value !== '' && bossHostRef.value === me;
 
-      if (!amBossHost && bossState.hp > 0) {
-        /* Mirror the host's state. */
-        s.bossHp = bossState.hp;
-        s.bossX = bossState.x;
-        s.bossY = bossState.y;
-        s.bossDir = bossState.dir;
+      if (!amBossHost) {
+        if (bossState.hp > 0) {
+          /* Mirror the host's state. */
+          s.bossHp = bossState.hp;
+          s.bossX = bossState.x;
+          s.bossY = bossState.y;
+          s.bossDir = bossState.dir;
+          sawLiveBoss.current = true;
+        } else if (sawLiveBoss.current) {
+          /* The host reports the boss dead. Earlier waves reset its health
+             immediately, so a zero here can only mean the last one fell —
+             without this, only the host ever saw the victory screen. The
+             `sawLiveBoss` guard matters because `bossState.hp` starts at 0
+             and is only filled in by the first host broadcast: without it a
+             peer would "win" on its very first frame. */
+          s.bossHp = 0;
+          s.wave = FINAL_WAVE;
+          setWon(true);
+        }
       }
 
       if (s.bossHp > 0) {
@@ -525,8 +583,8 @@ export const SpaceMode: React.FC = () => {
         if (amBossHost && !frozen && targetable && now - s.lastBossAttack > ap) {
           s.lastBossAttack = now;
           /* Aim at the nearest pilot — that may be a wingman, not us. */
-          let tx = s.ship.x;
-          let ty = s.ship.y;
+          let tx = s.drone.x;
+          let ty = s.drone.y;
           let bestD = Infinity;
           Object.values(useGame.getState().wingmen).forEach((w) => {
             if (Date.now() - w.at > 3000) return;
@@ -559,31 +617,42 @@ export const SpaceMode: React.FC = () => {
           sfx.alarm();
         }
       } else if (amBossHost) {
-        /* Boss down: brief pause, then the next one warps in. */
-        s.bossHp = BOSS_MAX_HP;
+        /* Boss down. The network is clear once the last wave falls; before
+           that, a brief pause and the next one warps in. */
         s.score += 1000;
-        s.wave++;
         s.enemies = [];
-        bossState.hp = s.bossHp;
         sfx.success();
-        pushToast(`BOSS DEVRİLDİ — Dalga ${s.wave}`, 'good');
+        if (s.wave >= FINAL_WAVE) {
+          s.bossHp = 0;
+          bossState.hp = 0;
+          setWon(true);
+          /* Publish the kill so peers see the same victory screen. Earlier
+             waves never send zero, because their health resets in the same
+             frame — a zero on the wire is unambiguous. */
+          net.send({ t: 'space:boss', from: me, hp: 0, x: s.bossX, y: s.bossY, dir: s.bossDir });
+        } else {
+          s.wave++;
+          s.bossHp = BOSS_MAX_HP;
+          bossState.hp = s.bossHp;
+          pushToast(`SÜRÜ ÇÖKERTİLDİ — Dalga ${s.wave}`, 'good');
+        }
       }
 
       /* ---------------- energy from hits ---------------- */
       /* Earned passively so skills stay reachable during long fights. */
-      if (s.ship.alive) s.ship.energy = Math.min(100, s.ship.energy + 0.06 * dt);
+      if (s.drone.alive) s.drone.energy = Math.min(100, s.drone.energy + 0.06 * dt);
 
       /* ---------------- death / respawn ---------------- */
-      if (s.ship.hull <= 0 && s.ship.alive) {
-        s.ship.alive = false;
+      if (s.drone.chassis <= 0 && s.drone.alive) {
+        s.drone.alive = false;
         sfx.fail();
-        spawnBurst(s.ship.x, s.ship.y, '#f43f5e', 40);
+        spawnBurst(s.drone.x, s.drone.y, '#f43f5e', 40);
       }
-      if (!s.ship.alive) {
-        s.ship.hull += 0.35 * dt; // slow repair
-        if (s.ship.hull >= s.ship.maxHull * 0.5) {
-          s.ship.alive = true;
-          s.ship.hull = s.ship.maxHull * 0.5;
+      if (!s.drone.alive) {
+        s.drone.chassis += 0.35 * dt; // slow repair
+        if (s.drone.chassis >= s.drone.maxChassis * 0.5) {
+          s.drone.alive = true;
+          s.drone.chassis = s.drone.maxChassis * 0.5;
           pushToast('Gövde onarıldı — savaşa dön', 'good');
         }
       }
@@ -601,7 +670,7 @@ export const SpaceMode: React.FC = () => {
           st.y = -4;
           st.x = Math.random() * W;
         }
-        const dx = s.ship.vx * st.z * 1.5;
+        const dx = s.drone.vx * st.z * 1.5;
         ctx.strokeStyle = `rgba(${180 + st.z * 70}, ${210 + st.z * 40}, 255, ${0.25 + st.z * 0.6})`;
         ctx.lineWidth = st.size;
         ctx.beginPath();
@@ -853,8 +922,8 @@ export const SpaceMode: React.FC = () => {
           default: {
             /* Standard shot. */
             ctx.shadowBlur = 8;
-            ctx.shadowColor = ship.color;
-            ctx.fillStyle = ship.color;
+            ctx.shadowColor = drone.color;
+            ctx.fillStyle = drone.color;
             ctx.fillRect(-4, -2.4, 8, 4.8);
             break;
           }
@@ -862,19 +931,19 @@ export const SpaceMode: React.FC = () => {
         ctx.restore();
       }
 
-      /* Our ship. Cloak makes it a ghost — visible to us, not to the boss. */
-      if (s.ship.alive) {
+      /* Our drone. Cloak makes it a ghost — visible to us, not to the boss. */
+      if (s.drone.alive) {
         const cloaked = t < s.cloakUntil;
         ctx.save();
         ctx.globalAlpha = cloaked ? 0.28 : 1;
-        ctx.translate(s.ship.x, s.ship.y);
-        ctx.rotate(((s.ship.angle + 90) * Math.PI) / 180);
-        ctx.scale(ship.scale, ship.scale);
+        ctx.translate(s.drone.x, s.drone.y);
+        ctx.rotate(((s.drone.angle + 90) * Math.PI) / 180);
+        ctx.scale(drone.scale, drone.scale);
 
         /* Engine flare */
         const flare = 12 + Math.random() * 10;
         const fg = ctx.createLinearGradient(0, 16, 0, 16 + flare);
-        fg.addColorStop(0, ship.color);
+        fg.addColorStop(0, drone.color);
         fg.addColorStop(1, 'transparent');
         ctx.fillStyle = fg;
         ctx.beginPath();
@@ -884,9 +953,9 @@ export const SpaceMode: React.FC = () => {
         ctx.closePath();
         ctx.fill();
 
-        /* Hull */
+        /* Chassis */
         ctx.fillStyle = '#0b1220';
-        ctx.strokeStyle = ship.color;
+        ctx.strokeStyle = drone.color;
         ctx.lineWidth = 2.4;
         ctx.beginPath();
         ctx.moveTo(0, -24);
@@ -900,7 +969,7 @@ export const SpaceMode: React.FC = () => {
         ctx.stroke();
 
         /* Cockpit */
-        ctx.fillStyle = ship.color;
+        ctx.fillStyle = drone.color;
         ctx.globalAlpha = 0.85;
         ctx.beginPath();
         ctx.ellipse(0, -6, 5, 9, 0, 0, Math.PI * 2);
@@ -909,7 +978,7 @@ export const SpaceMode: React.FC = () => {
         ctx.restore();
       }
 
-      /* Ship bursts */
+      /* Drone bursts */
       for (const b of s.bursts) {
         const age = (now - b.at) / b.life;
         if (age >= 1) continue;
@@ -930,14 +999,14 @@ export const SpaceMode: React.FC = () => {
         ctx.fillStyle = 'rgba(56,189,248,0.10)';
         ctx.fillRect(0, 0, W, H);
       }
-      /* Shockwave: expanding rings from the ship. */
+      /* Shockwave: expanding rings from the drone. */
       if (t < s.stunUntil) {
         const age = 1 - (s.stunUntil - t) / 3000;
         ctx.strokeStyle = `rgba(251,191,36,${0.6 * (1 - age)})`;
         ctx.lineWidth = 4;
         for (let i = 0; i < 3; i++) {
           ctx.beginPath();
-          ctx.arc(s.ship.x, s.ship.y, 40 + age * 420 + i * 90, 0, Math.PI * 2);
+          ctx.arc(s.drone.x, s.drone.y, 40 + age * 420 + i * 90, 0, Math.PI * 2);
           ctx.stroke();
         }
       }
@@ -959,13 +1028,13 @@ export const SpaceMode: React.FC = () => {
         const rk = s.round;
         const tint =
           rk === 'fireball' ? 'rgba(249,115,22,0.13)' : rk === 'iceball' ? 'rgba(103,232,249,0.10)' : rk === 'energyball' ? 'rgba(192,132,252,0.12)' : 'rgba(251,113,133,0.11)';
-        const g = ctx.createRadialGradient(s.ship.x, s.ship.y, 40, s.ship.x, s.ship.y, 460);
+        const g = ctx.createRadialGradient(s.drone.x, s.drone.y, 40, s.drone.x, s.drone.y, 460);
         g.addColorStop(0, tint);
         g.addColorStop(1, 'transparent');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, W, H);
       }
-      /* Shield: a hex bubble around the ship. */
+      /* Shield: a hex bubble around the drone. */
       if (t < s.shieldUntil) {
         ctx.save();
         ctx.strokeStyle = 'rgba(34,211,238,0.75)';
@@ -976,8 +1045,8 @@ export const SpaceMode: React.FC = () => {
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
           const a = (i / 6) * Math.PI * 2 + now / 900;
-          const px = s.ship.x + Math.cos(a) * R;
-          const py = s.ship.y + Math.sin(a) * R;
+          const px = s.drone.x + Math.cos(a) * R;
+          const py = s.drone.y + Math.sin(a) * R;
           i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
         }
         ctx.closePath();
@@ -994,42 +1063,33 @@ export const SpaceMode: React.FC = () => {
         ctx.lineWidth = 3;
         for (const off of [0, Math.PI * 0.66, Math.PI * 1.33]) {
           ctx.beginPath();
-          ctx.arc(s.ship.x, s.ship.y, 34, off + now / 1400, off + now / 1400 + 0.7);
+          ctx.arc(s.drone.x, s.drone.y, 34, off + now / 1400, off + now / 1400 + 0.7);
           ctx.stroke();
         }
         ctx.restore();
       }
-      /* Cloak: the hull goes translucent with a shimmer outline. */
-      /* (applied where the ship is drawn — see shipAlpha below) */
+      /* Cloak: the chassis goes translucent with a shimmer outline. */
+      /* (applied where the drone is drawn — see the chassis alpha below) */
       /* Overdrive: exhaust sparks. */
-      if (t < s.overdriveUntil && s.ship.alive) {
+      if (t < s.overdriveUntil && s.drone.alive) {
         for (let i = 0; i < 5; i++) {
           const a = Math.random() * Math.PI * 2;
           const d = 20 + Math.random() * 26;
           ctx.fillStyle = 'rgba(251,146,60,0.8)';
           ctx.beginPath();
-          ctx.arc(s.ship.x + Math.cos(a) * d, s.ship.y + Math.sin(a) * d, 2.4, 0, Math.PI * 2);
+          ctx.arc(s.drone.x + Math.cos(a) * d, s.drone.y + Math.sin(a) * d, 2.4, 0, Math.PI * 2);
           ctx.fill();
         }
       }
-      /* Ricochet: green tracers along the arena edge. */
-      if (t < s.ricochetUntil) {
-        ctx.strokeStyle = 'rgba(74,222,128,0.45)';
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([14, 10]);
-        ctx.strokeRect(2, 2, W - 4, H - 4);
-        ctx.setLineDash([]);
-      }
-
-      /* Wingmen — other pilots, drawn from their latest position report. */
+      /* Wingmen — other drones, drawn from their latest position report. */
       const wingmen = useGame.getState().wingmen;
       Object.entries(wingmen).forEach(([id, w]) => {
         if (Date.now() - w.at > 3000) return;
-        const wShip = SHIPS.find((x) => x.id === w.ship) ?? SHIPS[0];
+        const wDrone = DRONES.find((x) => x.id === w.drone) ?? DRONES[0];
         ctx.save();
         ctx.translate(w.x, w.y);
         ctx.rotate(((w.angle + 90) * Math.PI) / 180);
-        ctx.scale(wShip.scale, wShip.scale);
+        ctx.scale(wDrone.scale, wDrone.scale);
 
         /* Their engine flare. */
         const wf = 9 + Math.random() * 7;
@@ -1044,7 +1104,7 @@ export const SpaceMode: React.FC = () => {
         ctx.closePath();
         ctx.fill();
 
-        /* Their hull, drawn a touch dimmer than our own. */
+        /* Their chassis, drawn a touch dimmer than our own. */
         ctx.globalAlpha = 0.9;
         ctx.fillStyle = '#0b1220';
         ctx.strokeStyle = w.color;
@@ -1066,7 +1126,7 @@ export const SpaceMode: React.FC = () => {
         ctx.fill();
         ctx.restore();
 
-        /* Callsign + hull readout beneath them. */
+        /* Callsign + chassis readout beneath them. */
         ctx.save();
         ctx.font = 'bold 11px monospace';
         ctx.fillStyle = w.color;
@@ -1074,14 +1134,14 @@ export const SpaceMode: React.FC = () => {
         ctx.fillText(w.name || id.slice(0, 5), w.x, w.y + 38);
         ctx.font = '9px monospace';
         ctx.fillStyle = 'rgba(148,163,184,0.9)';
-        ctx.fillText(`${Math.round(w.hull)} HP`, w.x, w.y + 50);
+        ctx.fillText(`${Math.round(w.chassis)} HP`, w.x, w.y + 50);
         ctx.restore();
 
         /* Health pip. */
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
         ctx.fillRect(w.x - 18, w.y + 54, 36, 3);
-        ctx.fillStyle = w.hull / w.maxHull > 0.5 ? '#4ade80' : w.hull / w.maxHull > 0.25 ? '#fbbf24' : '#f43f5e';
-        ctx.fillRect(w.x - 18, w.y + 54, 36 * Math.max(0, Math.min(1, w.hull / w.maxHull)), 3);
+        ctx.fillStyle = w.chassis / w.maxChassis > 0.5 ? '#4ade80' : w.chassis / w.maxChassis > 0.25 ? '#fbbf24' : '#f43f5e';
+        ctx.fillRect(w.x - 18, w.y + 54, 36 * Math.max(0, Math.min(1, w.chassis / w.maxChassis)), 3);
       });
 
       /* Status banner along the top edge, in reading order. */
@@ -1130,7 +1190,7 @@ export const SpaceMode: React.FC = () => {
       });
 
       /* Crosshair */
-      ctx.strokeStyle = ship.color;
+      ctx.strokeStyle = drone.color;
       ctx.lineWidth = 1.4;
       ctx.globalAlpha = 0.75;
       ctx.beginPath();
@@ -1149,19 +1209,19 @@ export const SpaceMode: React.FC = () => {
       /* ---------------- broadcast our position ----------------
          ~15/sec: fast enough that wingmen glide rather than teleport, cheap
          enough not to flood the channel. */
-      if (now - lastShipSync > 65) {
-        lastShipSync = now;
+      if (now - lastDroneSync > 65) {
+        lastDroneSync = now;
         net.send({
-          t: 'space:ship',
+          t: 'space:drone',
           from: me,
           name,
-          color: ship.color,
-          ship: ship.id,
-          x: s.ship.x,
-          y: s.ship.y,
-          angle: s.ship.angle,
-          hull: Math.max(0, s.ship.hull),
-          maxHull: s.ship.maxHull,
+          color: drone.color,
+          drone: drone.id,
+          x: s.drone.x,
+          y: s.drone.y,
+          angle: s.drone.angle,
+          chassis: Math.max(0, s.drone.chassis),
+          maxChassis: s.drone.maxChassis,
         });
       }
 
@@ -1170,13 +1230,14 @@ export const SpaceMode: React.FC = () => {
       if (hudTick > 10) {
         hudTick = 0;
         setHud({
-          hull: Math.max(0, s.ship.hull),
-          energy: s.ship.energy,
+          chassis: Math.max(0, s.drone.chassis),
+          energy: s.drone.energy,
           score: s.score,
           bossHp: s.bossHp,
           phase: s.bossPhase,
           enemies: s.enemies.length,
-          alive: s.ship.alive,
+          alive: s.drone.alive,
+          wave: s.wave,
         });
       }
 
@@ -1186,7 +1247,7 @@ export const SpaceMode: React.FC = () => {
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picked, ship]);
+  }, [picked, drone]);
 
   /* ---- burst particles ---- */
   const spawnBurst = (x: number, y: number, color: string, r = 22) => {
@@ -1196,11 +1257,11 @@ export const SpaceMode: React.FC = () => {
     if (s.bursts.length > 60) s.bursts.splice(0, s.bursts.length - 60);
   };
 
-  /* Broadcast our hull so peers see the right silhouette. */
+  /* Broadcast our chassis so peers see the right silhouette. */
   useEffect(() => {
     if (!picked) return;
-    announcePilot(shipId, useGame.getState().spaceReady);
-  }, [picked, shipId]);
+    announcePilot(droneId, useGame.getState().spaceReady);
+  }, [picked, droneId]);
 
   /* Leaving the arena takes us out of the briefing room too. */
   useEffect(() => {
@@ -1208,25 +1269,99 @@ export const SpaceMode: React.FC = () => {
     return () => leaveSquadron();
   }, [picked]);
 
-  /* ---- mouse ---- */
+  /* ---- pointer (mouse and touch share one code path) ----
+     Desktop aims at the cursor and fires while the button is held. Touch has
+     no cursor and no second hand, so a finger drag steers the drone toward the
+     contact point and the cannon auto-aims at the nearest threat — otherwise
+     the mode is unplayable on a phone. */
   const mouse = useRef({ x: W / 2, y: H / 2 });
-  /* Only records the cursor; the loop aims the ship each frame. */
-  const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  /* Set while a finger is down; null for mouse users. */
+  const touchSteer = useRef<{ x: number; y: number } | null>(null);
+  /* True once the host has reported a live boss. Distinguishes "host says the
+     boss is dead" from "no host message yet", since `bossState.hp` starts at 0. */
+  const sawLiveBoss = useRef(false);
+
+  const pointFrom = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const c = canvasRef.current;
-    if (!c) return;
+    if (!c) return null;
     const r = c.getBoundingClientRect();
-    mouse.current = {
+    return {
       x: ((e.clientX - r.left) / r.width) * W,
       y: ((e.clientY - r.top) / r.height) * H,
     };
   };
 
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const p = pointFrom(e);
+    if (!p) return;
+    mouse.current = p;
+    if (touchSteer.current) touchSteer.current = p;
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const p = pointFrom(e);
+    if (!p) return;
+    mouse.current = p;
+    sim.current.firing = true;
+    if (e.pointerType !== 'mouse') {
+      /* Keep receiving moves after the finger leaves the canvas. */
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      touchSteer.current = p;
+    }
+  };
+
+  const onPointerUp = () => {
+    sim.current.firing = false;
+    touchSteer.current = null;
+  };
+
+  /* A pointer released off-canvas must still stop the firing. */
+  useEffect(() => {
+    const stop = () => {
+      sim.current.firing = false;
+      touchSteer.current = null;
+    };
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+    return () => {
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+    };
+  }, []);
+
   /* ============================================================
      Screens
      ============================================================ */
-  /* Briefing room — hull pick, ready-up, auto-launch countdown. */
+  /* Briefing room — chassis pick, ready-up, auto-launch countdown. */
   if (!picked) {
     return <BriefingRoom onLaunch={() => setPicked(true)} onBack={() => setMode('hub')} />;
+  }
+
+  /* Network cleared — the swarm is down for good. */
+  if (won) {
+    return (
+      <TerminalScreen
+        title="ağ güvenli"
+        subtitle={`${FINAL_WAVE} sürü dalgası temizlendi. Ağ trafiği normale döndü.`}
+        outcome="win"
+        stats={[
+          { label: 'skor', value: hud.score, color: 'var(--neon-green)' },
+          { label: 'dalga', value: `${hud.wave}/${FINAL_WAVE}` },
+          { label: 'drone', value: drone.name.split(' ')[1] ?? drone.name },
+        ]}
+        onRetry={() => {
+          setWon(false);
+          setPicked(false);
+          sfx.click();
+        }}
+        retryLabel="yeni görev"
+        onExit={() => {
+          setWon(false);
+          setPicked(false);
+          setMode('hub');
+        }}
+      />
+    );
   }
 
 
@@ -1268,39 +1403,37 @@ export const SpaceMode: React.FC = () => {
           ref={canvasRef}
           width={W}
           height={H}
-          className="block w-full cursor-crosshair"
+          className="block w-full cursor-crosshair touch-none"
           style={{ aspectRatio: `${W} / ${H}` }}
-          onMouseMove={onMouseMove}
-          onMouseDown={() => {
-            sim.current.firing = true;
-          }}
-          onMouseUp={() => {
-            sim.current.firing = false;
-          }}
-          onMouseLeave={() => {
-            sim.current.firing = false;
+          onPointerMove={onPointerMove}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+          onPointerLeave={() => {
+            /* Mouse leaving the arena stops the fire; a captured touch drag
+               keeps steering until the finger lifts. */
+            if (!touchSteer.current) sim.current.firing = false;
           }}
         />
 
         {/* Overlay HUD */}
         <div className="pointer-events-none absolute left-4 top-4 space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: ship.color }}>
+            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: drone.color }}>
               {name || 'OPERATÖR'}
             </span>
-            <span className="text-[9px] text-[var(--text-lo)]">{ship.name}</span>
+            <span className="text-[9px] text-[var(--text-lo)]">{drone.name}</span>
           </div>
           <div className="w-44">
             <div className="mb-0.5 flex justify-between text-[8px] uppercase tracking-widest text-[var(--text-lo)]">
-              <span>gövde</span>
-              <span className="stat">{Math.ceil(hud.hull)}</span>
+              <span>şasi</span>
+              <span className="stat">{Math.ceil(hud.chassis)}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-black/60">
               <div
                 className="h-full rounded-full transition-[width]"
                 style={{
-                  width: `${(hud.hull / ship.hull) * 100}%`,
-                  background: hud.hull / ship.hull > 0.5 ? '#4ade80' : hud.hull / ship.hull > 0.25 ? '#fbbf24' : '#f43f5e',
+                  width: `${(hud.chassis / drone.chassis) * 100}%`,
+                  background: hud.chassis / drone.chassis > 0.5 ? '#4ade80' : hud.chassis / drone.chassis > 0.25 ? '#fbbf24' : '#f43f5e',
                 }}
               />
             </div>
@@ -1319,7 +1452,7 @@ export const SpaceMode: React.FC = () => {
         <div className="pointer-events-none absolute right-4 top-4 text-right">
           <p className="stat text-2xl font-black text-white">{hud.score}</p>
           <p className="text-[9px] uppercase tracking-widest text-[var(--text-lo)]">
-            {hud.enemies} düşman
+            {hud.enemies} tehdit
           </p>
         </div>
 
@@ -1327,7 +1460,7 @@ export const SpaceMode: React.FC = () => {
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60">
             <div className="text-center">
               <p className="text-3xl font-black uppercase tracking-widest text-[var(--neon-rose)]">
-                GÖVDE ÇÖKTÜ
+                AĞ BAĞLANTISI KESİLDİ
               </p>
               <p className="mt-2 text-xs text-[var(--text-mid)]">onarım başlatıldı...</p>
             </div>
@@ -1335,15 +1468,18 @@ export const SpaceMode: React.FC = () => {
         )}
 
         <div className="pointer-events-none absolute bottom-3 left-4 text-[9px] uppercase tracking-widest text-[var(--text-lo)]">
-          WASD hareket · sol tık ateş · Q E R F C yetenek
+          <span className="hidden sm:inline">WASD hareket · sol tık ateş · Q E R F C yetenek</span>
+          <span className="sm:hidden">sürükle hareket · otomatik nişan · yetenekler altta</span>
         </div>
       </div>
 
       {/* Skill bar — compact LoL-style slots: key, icon, cost. */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
         <div className="panel p-3 lg:col-span-3">
-          <div className="flex items-center gap-2">
-            {ship.skills.map((sk, i) => {
+          {/* Wraps rather than overflowing: five 56px slots plus gaps need
+              ~312px, which a 320px phone does not have. */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {drone.skills.map((sk, i) => {
               const def = SKILLS[sk];
               const Icon = SKILL_ICONS[sk];
               const affordable = hud.energy >= def.cost;
@@ -1355,16 +1491,16 @@ export const SpaceMode: React.FC = () => {
                   onClick={() => castSkill(sk)}
                   disabled={!affordable}
                   title={`${def.name} — ${def.desc}`}
-                  className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-150 disabled:cursor-not-allowed"
+                  className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-150 disabled:cursor-not-allowed sm:h-14 sm:w-14"
                   style={{
                     borderColor: on ? '#fff' : affordable ? def.color : 'rgba(148,163,184,0.3)',
                     background: on
                       ? `linear-gradient(160deg, ${def.color}44, rgba(4,6,12,0.9))`
                       : 'linear-gradient(160deg, rgba(255,255,255,0.05), rgba(4,6,12,0.9))',
                     boxShadow: on
-                      ? `0 0 20px ${def.color}, inset 0 0 14px ${def.color}66`
+                      ? `0 0 20px ${def.color}, inset 0 0 14px ${alpha(def.color, 0.4)}`
                       : affordable
-                        ? `inset 0 0 10px ${def.color}22`
+                        ? `inset 0 0 10px ${alpha(def.color, 0.13)}`
                         : 'none',
                     opacity: affordable ? 1 : 0.45,
                   }}
@@ -1401,7 +1537,7 @@ export const SpaceMode: React.FC = () => {
             })}
 
             <div className="ml-2 hidden flex-1 text-[10px] leading-relaxed text-[var(--text-lo)] sm:block">
-              {ship.skills.map((sk) => (
+              {drone.skills.map((sk) => (
                 <span key={sk} className="mr-3 inline-block whitespace-nowrap">
                   <span style={{ color: SKILLS[sk].color }}>{SKILLS[sk].name}</span>
                   <span className="text-[var(--text-lo)]"> — {SKILLS[sk].desc}</span>
@@ -1412,7 +1548,7 @@ export const SpaceMode: React.FC = () => {
         </div>
 
         <div className="panel p-3">
-          <p className="label mb-2">filo</p>
+          <p className="label mb-2">ağ durumu</p>
           <div className="space-y-1.5">
             <p className="text-center text-[11px] font-black uppercase tracking-wider text-[var(--neon-violet)]">
               {squadron.formation}
@@ -1428,30 +1564,30 @@ export const SpaceMode: React.FC = () => {
                 </span>
                 <span
                   className="text-[9px] font-bold uppercase tracking-wider"
-                  style={{ color: p.ready ? '#4ade80' : 'var(--text-lo)' }}
+                  style={{ color: p.ready ? PALETTE.green : 'var(--text-lo)' }}
                 >
                   {p.ready ? '✓' : '…'}
                 </span>
               </div>
             ))}
             <p className="pt-1 text-[9px] leading-relaxed text-[var(--text-lo)]">
-              {squadron.pilots.length} pilot sahnede
+              {squadron.pilots.length} düğüm bağlı
             </p>
           </div>
         </div>
       </div>
 
       <div className="flex justify-center">
-        <button
+        <Btn
+          tone="ghost"
           onClick={() => {
             setPicked(false);
             setMode('hub');
             sfx.click();
           }}
-          className="rounded-lg border border-[var(--line-strong)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-mid)] hover:text-white"
         >
           ← merkez
-        </button>
+        </Btn>
       </div>
     </div>
   );

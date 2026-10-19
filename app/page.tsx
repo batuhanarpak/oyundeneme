@@ -15,6 +15,7 @@ import { SpaceMode } from '@/components/modes/SpaceMode';
 import { net } from '@/lib/net';
 import { isMuted, setMuted, sfx } from '@/lib/sfx';
 import { IconArrowLeft, IconVolume } from '@/components/ui/Icons';
+import { alpha } from '@/lib/color';
 
 export default function Page() {
   const boot = useGame((s) => s.boot);
@@ -151,7 +152,7 @@ export default function Page() {
                     >
                       <span
                         className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-black"
-                        style={{ background: `${color}22`, color }}
+                        style={{ background: `${alpha(color, 0.13)}`, color }}
                       >
                         {name.slice(0, 2).toUpperCase()}
                       </span>
@@ -212,7 +213,11 @@ export default function Page() {
             className="anim-slide rounded-lg border px-4 py-2.5 backdrop-blur-xl"
             style={{
               borderColor:
-                t.tone === 'good' ? 'var(--neon-green)55' : t.tone === 'warn' ? 'var(--neon-amber)55' : 'var(--line-strong)',
+                t.tone === 'good'
+                  ? alpha('var(--neon-green)', 0.33)
+                  : t.tone === 'warn'
+                    ? alpha('var(--neon-amber)', 0.33)
+                    : 'var(--line-strong)',
               background:
                 t.tone === 'good'
                   ? 'rgba(74,222,128,0.1)'

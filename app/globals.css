@@ -6,9 +6,9 @@
    NEON BREACH — Design tokens
    ============================================================ */
 :root {
-  --bg-void: #04060c;
-  --bg-deep: #080d18;
-  --bg-panel: rgba(12, 20, 34, 0.72);
+  --bg-void: #02040a;
+  --bg-deep: #050a1a;
+  --bg-panel: rgba(10, 18, 32, 0.75);
 
   --neon-cyan: #22d3ee;
   --neon-violet: #a78bfa;
@@ -17,12 +17,20 @@
   --neon-green: #4ade80;
   --neon-blue: #3b82f6;
 
-  --line: rgba(148, 197, 255, 0.14);
-  --line-strong: rgba(148, 197, 255, 0.28);
+  --line: rgba(148, 197, 255, 0.1);
+  --line-strong: rgba(148, 197, 255, 0.2);
 
-  --text-hi: #e8f4ff;
-  --text-mid: #9fb6d4;
-  --text-lo: #5b7392;
+  --text-hi: #f8fafc;
+  --text-mid: #94a3b8;
+  --text-lo: #475569;
+
+  /* The triad: editorial serif for titles, Inter for UI, JetBrains Mono for
+     data. Each reads its `next/font` variable — naming a token after itself
+     (`--font-serif: var(--font-serif)`) is a circular reference, which is
+     invalid and silently dropped the whole declaration. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular;
 }
 
 * {

@@ -11,7 +11,7 @@ import { IconUsers, IconBolt, IconTarget } from '@/components/ui/Icons';
  * Connection panel.
  *
  * Shows whether play is local-only (same-browser tabs) or relayed through
- * PartyKit so friends on other machines can join. When no relay is set, it
+ * PartyServer so friends on other machines can join. When no relay is set, it
  * takes a one-line host and stores it — no env files or rebuilds.
  */
 export const NetStatus: React.FC = () => {
@@ -33,14 +33,12 @@ export const NetStatus: React.FC = () => {
       sfx.confirm();
       setTimeout(() => setCopied(false), 2200);
     } catch {
-      /* clipboard needs a secure context; fall back to a prompt */
       window.prompt('Bağlantıyı kopyala:', url);
     }
   };
 
   return (
     <>
-      {/* Status pill in the command bar */}
       <button
         onClick={() => {
           setOpen((v) => !v);
@@ -62,7 +60,6 @@ export const NetStatus: React.FC = () => {
         <span className="stat">{peers.length + (playerId ? 1 : 0)}</span>
       </button>
 
-      {/* Drawer */}
       {open && (
         <div className="fixed inset-0 z-[9990] flex items-start justify-center bg-black/70 p-4 pt-20 backdrop-blur-sm">
           <div className="panel anim-rise w-full max-w-lg">
@@ -113,7 +110,6 @@ export const NetStatus: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Live roster */}
                   <div>
                     <p className="label mb-2">çevrimiçi — {peers.length + 1}</p>
                     <div className="space-y-1.5">
@@ -185,27 +181,6 @@ export const NetStatus: React.FC = () => {
                     >
                       <IconBolt size={13} /> bağlan
                     </Btn>
-                  </div>
-
-                  <div className="border-t border-[var(--line)] pt-4">
-                    <p className="label mb-2">sunucu nasıl kurulur</p>
-                    <ol className="space-y-2">
-                      {[
-                        ['Terminali aç', 'Proje klasöründe şunu çalıştır: npx partykit deploy'],
-                        ['Çıkan adresi kopyala', 'Şuna benzer: neon-breach.senin-adin.partykit.dev'],
-                        ['Yukarıya yapıştır', 'Bağlan dediğin an çevrimiçi olursun'],
-                      ].map(([t, d], i) => (
-                        <li key={t} className="flex gap-2.5">
-                          <span className="stat flex h-5 w-5 shrink-0 items-center justify-center rounded border border-[var(--neon-cyan)]/40 text-[9px] font-black text-[var(--neon-cyan)]">
-                            {i + 1}
-                          </span>
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-white">{t}</p>
-                            <p className="mt-0.5 font-mono text-[10px] leading-relaxed text-[var(--text-mid)]">{d}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
                   </div>
                 </>
               )}

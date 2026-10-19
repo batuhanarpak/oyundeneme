@@ -18,7 +18,9 @@ import {
 } from '@/components/ui/Battlefield';
 import { WORD_TIERS } from '@/config/game';
 import { sfx } from '@/lib/sfx';
-import { IconSkull, IconSignature, IconBolt, IconTarget } from '@/components/ui/Icons';
+import { IconSignature, IconBolt, IconTarget, IconBlades } from '@/components/ui/Icons';
+import { alpha } from '@/lib/color';
+import { TerminalScreen } from '@/components/ui/TerminalScreen';
 
 const SPAWN_MS = 2200;
 /** Travel time for a direct hop; longer routes scale up from this. */
@@ -510,6 +512,13 @@ export const TowerMode: React.FC = () => {
     );
   };
 
+  /* Derived readouts. Hoisted above the `over` branch because the end screen
+     reports them too. */
+  const myOutposts = Object.entries(outpostOwners).filter(([, o]) => o === playerId).length;
+  const homeGarrisonCount = myCount;
+  const slow = nowMs < slowUntil;
+  const toNextSlow = SLOWMO_EVERY - (solved % SLOWMO_EVERY);
+
   /* ---------------- countdown ---------------- */
   if (phase === 'countdown') {
     return (
@@ -550,50 +559,30 @@ export const TowerMode: React.FC = () => {
   /* ---------------- defeat ---------------- */
   if (phase === 'over') {
     return (
-      <div className="mx-auto max-w-lg">
-        <Panel accent="var(--neon-rose)" bodyClass="p-8">
-          <div className="anim-rise text-center">
-            <IconSkull size={48} className="mx-auto mb-4 text-[var(--neon-rose)]" />
-            <h2 className="text-3xl font-black uppercase tracking-tight text-[var(--neon-rose)]">kule düştü</h2>
-            <p className="mt-3 text-sm text-[var(--text-mid)]">
-              Skor: <span className="font-black text-white">{score}</span>
-            </p>
-            <div className="mt-6 space-y-2">
-              {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded-lg border border-[var(--line)] px-4 py-2"
-                  style={{ borderColor: p.id === playerId ? `${p.color}66` : undefined }}
-                >
-                  <span className="flex items-center gap-2 text-xs font-bold" style={{ color: p.color }}>
-                    <span className="stat text-[var(--text-lo)]">#{i + 1}</span>
-                    {p.name}
-                    {p.id === playerId && <span className="text-[9px]">(SEN)</span>}
-                  </span>
-                  <span className="stat text-sm font-black text-white">{p.score}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex justify-center gap-2">
-              <Btn tone="amber" onClick={reset}>
-                yeniden
-              </Btn>
-              <Btn tone="ghost" onClick={() => setMode('hub')}>
-                merkez
-              </Btn>
-            </div>
-          </div>
-        </Panel>
-      </div>
+      <TerminalScreen
+        title="kule düştü"
+        subtitle="Ağ savunması çöktü. Sana ait tüm karakollar tarafsız bölgeye döndü."
+        outcome="loss"
+        stats={[
+          { label: 'skor', value: score },
+          { label: 'karakol', value: myOutposts, color: 'var(--neon-green)' },
+          { label: 'birlik', value: homeGarrisonCount, color: 'var(--neon-amber)' },
+        ]}
+        ranking={players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          score: p.score,
+          color: p.color,
+          you: p.id === playerId,
+        }))}
+        onRetry={reset}
+        retryLabel="yeniden"
+        onExit={() => setMode('hub')}
+      />
     );
   }
 
   /* ---------------- playing ---------------- */
-  const myOutposts = Object.entries(outpostOwners).filter(([, o]) => o === playerId).length;
-  const homeGarrisonCount = myCount;
-  const slow = nowMs < slowUntil;
-  const toNextSlow = SLOWMO_EVERY - (solved % SLOWMO_EVERY);
-
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
       {/* Bullet-time wash over the whole screen */}
@@ -668,9 +657,9 @@ export const TowerMode: React.FC = () => {
                   top: `${w.y}%`,
                   left: `${w.x}%`,
                   transform: `translate(-50%, -50%) rotate(${w.rot}deg)`,
-                  borderColor: `${w.color}55`,
-                  background: `${w.color}12`,
-                  boxShadow: `0 0 14px ${w.color}22`,
+                  borderColor: alpha(w.color, 0.33),
+                  background: alpha(w.color, 0.07),
+                  boxShadow: `0 0 14px ${alpha(w.color, 0.13)}`,
                 }}
               >
                 {renderWord(w)}
@@ -774,8 +763,8 @@ export const TowerMode: React.FC = () => {
               kelime yaz, birlik biriksin
             </p>
           ) : (
-            <p className="mt-3 text-center text-[10px] uppercase tracking-[0.16em] text-[var(--neon-green)]">
-              ⚔ {homeGarrisonCount} birlik hazır — sürükleyip gönder
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[10px] uppercase tracking-[0.16em] text-[var(--neon-green)]">
+              <IconBlades size={12} /> {homeGarrisonCount} birlik hazır — sürükleyip gönder
             </p>
           )}
         </Panel>

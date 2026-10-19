@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { SoldierWire } from '@/lib/net';
+import { alpha, PALETTE } from '@/lib/color';
 
 /**
  * Shared battlefield — a node network rather than a straight lane.
@@ -404,7 +405,7 @@ export const Battlefield: React.FC<Props> = ({
     >
       <defs>
         <pattern id="bf-grid" width="32" height="32" patternUnits="userSpaceOnUse">
-          <path d="M32 0H0V32" fill="none" stroke="#38bdf8" strokeOpacity="0.06" strokeWidth="1" />
+          <path d="M32 0H0V32" fill="none" stroke={PALETTE.blue} strokeOpacity="0.06" strokeWidth="1" />
         </pattern>
         <radialGradient id="bf-void" cx="50%" cy="48%" r="72%">
           <stop offset="0%" stopColor="#0b1424" />
@@ -434,7 +435,7 @@ export const Battlefield: React.FC<Props> = ({
           key={r.key}
           d={r.d}
           fill="none"
-          stroke="#38bdf8"
+          stroke={PALETTE.blue}
           strokeOpacity={0.11}
           strokeWidth="1.5"
           strokeDasharray="6 10"
@@ -452,9 +453,9 @@ export const Battlefield: React.FC<Props> = ({
         return (
           <g key={i}>
             {isTarget && (
-              <circle cx={o.x} cy={o.y} r="50" fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeDasharray="7 5" filter="url(#bf-glow)" />
+              <circle cx={o.x} cy={o.y} r="50" fill="none" stroke={PALETTE.cyan} strokeWidth="2.5" strokeDasharray="7 5" filter="url(#bf-glow)" />
             )}
-            <circle cx={o.x} cy={o.y} r="30" fill={`${ownerColor}18`} stroke={`${ownerColor}88`} strokeWidth="1.8" />
+            <circle cx={o.x} cy={o.y} r="30" fill={`${alpha(ownerColor, 0.09)}`} stroke={`${alpha(ownerColor, 0.53)}`} strokeWidth="1.8" />
             <path
               d={`M${o.x} ${o.y + 16}V${o.y - 4}M${o.x - 12} ${o.y + 10}L${o.x} ${o.y - 16}L${o.x + 12} ${o.y + 10}`}
               fill="none"
@@ -506,8 +507,8 @@ export const Battlefield: React.FC<Props> = ({
             {isTarget && (
               <circle cx={s.x} cy={s.y} r="64" fill="none" stroke={p.color} strokeWidth="2.5" strokeDasharray="8 6" filter="url(#bf-glow)" />
             )}
-            <circle cx={s.x} cy={s.y} r="48" fill={`${p.color}14`} stroke={`${p.color}55`} strokeWidth="1.6" />
-            <circle cx={s.x} cy={s.y} r="39" fill="none" stroke={`${p.color}33`} strokeWidth="1" strokeDasharray="4 5" />
+            <circle cx={s.x} cy={s.y} r="48" fill={`${alpha(p.color, 0.08)}`} stroke={`${alpha(p.color, 0.33)}`} strokeWidth="1.6" />
+            <circle cx={s.x} cy={s.y} r="39" fill="none" stroke={`${alpha(p.color, 0.2)}`} strokeWidth="1" strokeDasharray="4 5" />
 
             <path
               d={`M${s.x - 23} ${s.y + 27}V${s.y - 9}h10v-9h9v9h8v-9h9v9h10V${s.y + 27}Z`}
@@ -528,7 +529,7 @@ export const Battlefield: React.FC<Props> = ({
                 rx="1"
                 fill={i / 4 < pct ? p.color : '#05080f'}
                 fillOpacity={i / 4 < pct ? 0.9 : 1}
-                stroke={`${p.color}55`}
+                stroke={`${alpha(p.color, 0.33)}`}
                 strokeWidth="0.8"
               />
             ))}
@@ -540,7 +541,7 @@ export const Battlefield: React.FC<Props> = ({
               width={72 * pct}
               height="6"
               rx="3"
-              fill={pct > 0.5 ? '#4ade80' : pct > 0.25 ? '#fbbf24' : '#f43f5e'}
+              fill={pct > 0.5 ? PALETTE.green : pct > 0.25 ? PALETTE.amber : PALETTE.rose}
             />
 
             {/* Nameplate sits ABOVE the keep so the garrison badge below has
@@ -589,8 +590,17 @@ export const Battlefield: React.FC<Props> = ({
                     strokeWidth="2"
                     strokeOpacity={count > 0 ? 1 : 0.35}
                   />
+                  <path
+                    d="M-6 -5 6 5M6 -5-6 5"
+                    transform={`translate(${s.x - 15} ${s.y + 51})`}
+                    stroke={p.color}
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeOpacity={count > 0 ? 1 : 0.45}
+                    fill="none"
+                  />
                   <text
-                    x={s.x}
+                    x={s.x + 8}
                     y={s.y + 55}
                     textAnchor="middle"
                     fontSize="14"
@@ -599,7 +609,7 @@ export const Battlefield: React.FC<Props> = ({
                     fill={p.color}
                     fillOpacity={count > 0 ? 1 : 0.45}
                   >
-                    ⚔ {count}
+                    {count}
                   </text>
                 </g>
               );
@@ -676,22 +686,22 @@ export const Battlefield: React.FC<Props> = ({
       {/* --- drag feedback --- */}
       {drag && dragOrigin && (
         <g pointerEvents="none">
-          <line x1={dragOrigin.x} y1={dragOrigin.y} x2={drag.x} y2={drag.y} stroke="#22d3ee" strokeWidth="2" strokeDasharray="7 5" />
+          <line x1={dragOrigin.x} y1={dragOrigin.y} x2={drag.x} y2={drag.y} stroke={PALETTE.cyan} strokeWidth="2" strokeDasharray="7 5" />
           {drag.kind === 'stack' ? (
             <g>
-              <rect x={drag.x - 22} y={drag.y - 11} width="44" height="22" rx="11" fill="#04060c" stroke="#22d3ee" strokeWidth="2" />
-              <text x={drag.x} y={drag.y + 5} textAnchor="middle" fontSize="12" fontWeight="800" fontFamily="monospace" fill="#22d3ee">
+              <rect x={drag.x - 22} y={drag.y - 11} width="44" height="22" rx="11" fill="#04060c" stroke={PALETTE.cyan} strokeWidth="2" />
+              <text x={drag.x} y={drag.y + 5} textAnchor="middle" fontSize="12" fontWeight="800" fontFamily="monospace" fill={PALETTE.cyan}>
                 {drag.count}
               </text>
             </g>
           ) : (
-            <circle cx={drag.x} cy={drag.y} r="9" fill="none" stroke="#22d3ee" strokeWidth="2" />
+            <circle cx={drag.x} cy={drag.y} r="9" fill="none" stroke={PALETTE.cyan} strokeWidth="2" />
           )}
         </g>
       )}
 
       {drag && (
-        <text x={W / 2} y="28" textAnchor="middle" fontSize="15" fontWeight="800" fontFamily="monospace" fill="#22d3ee">
+        <text x={W / 2} y="28" textAnchor="middle" fontSize="15" fontWeight="800" fontFamily="monospace" fill={PALETTE.cyan}>
           {drag.kind === 'stack'
             ? hoverNode
               ? `BIRAK → ${nodeLabel(hoverNode, byId, meId)}`

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { alpha } from '@/lib/color';
 
 interface PanelProps {
   title?: string;
@@ -85,10 +86,10 @@ export const Btn: React.FC<BtnProps> = ({
       {...rest}
       className={`group relative overflow-hidden rounded-lg border font-bold uppercase tracking-[0.16em] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-35 ${pad} ${className}`}
       style={{
-        borderColor: active ? t.c : `${t.c}55`,
+        borderColor: active ? t.c : `${alpha(t.c, 0.33)}`,
         background: active ? t.bg : 'rgba(255,255,255,0.025)',
         color: t.c,
-        boxShadow: active ? `0 0 20px ${t.c}44, inset 0 0 20px ${t.c}18` : 'none',
+        boxShadow: active ? `0 0 20px ${t.c}44, inset 0 0 20px ${alpha(t.c, 0.09)}` : 'none',
       }}
     >
       <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
@@ -97,7 +98,7 @@ export const Btn: React.FC<BtnProps> = ({
         aria-hidden
         className="pointer-events-none absolute inset-y-0 -left-full w-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         style={{
-          background: `linear-gradient(90deg, transparent, ${t.c}22, transparent)`,
+          background: `linear-gradient(90deg, transparent, ${alpha(t.c, 0.13)}, transparent)`,
           animation: 'nb-sweep 0.85s ease',
         }}
       />
@@ -146,7 +147,7 @@ export const Chip: React.FC<{ children: React.ReactNode; color?: string }> = ({
 }) => (
   <span
     className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em]"
-    style={{ borderColor: `${color}44`, color, background: `${color}12` }}
+    style={{ borderColor: `${alpha(color, 0.27)}`, color, background: `${alpha(color, 0.07)}` }}
   >
     {children}
   </span>
